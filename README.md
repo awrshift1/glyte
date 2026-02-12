@@ -14,8 +14,10 @@ I built Glyte because I needed it — running lead-gen campaigns across multiple
 
 - **Auto-Dashboard** — Upload CSV/TSV/Excel, get KPIs + line charts + bar charts + donut charts instantly
 - **AI Sidebar** — Ask questions in plain English ("What's the top campaign by response rate?"), get SQL + charts
-- **Multi-Table** — Add multiple CSVs to one dashboard. Glyte auto-detects matching columns and suggests links
-- **Smart Linking** — When you add a 2nd CSV, Glyte finds matching columns (by name + value overlap) and lets you link them with one click. AI then answers cross-table questions using JOINs
+- **Multi-Table** — Add multiple CSVs to one dashboard. Every CSV addition shows a "Table Added" modal with column toggles and relationship suggestions
+- **Smart Linking** — Glyte finds matching columns (by name + value overlap) and suggests links. Accept with one click, or manually link any columns via Table Manager. AI then answers cross-table questions using JOINs
+- **Table Manager** — Toggle column visibility per table (primary + secondary), delete tables, add/remove column links. Excluded columns are hidden from AI prompts but kept in data
+- **Column Visibility** — Choose which columns AI sees. Useful for hiding PII, internal IDs, or irrelevant fields from analysis
 - **Cross-Filtering** — Click any chart segment to filter the entire dashboard
 - **Glass Box** — See why AI chose each chart: confidence scores, column reasoning, accept/reject decisions
 - **MCP Server** — 4 tools (`list_dashboards`, `get_dashboard`, `query_dashboard`, `ask_dashboard`) for AI agents
@@ -73,7 +75,7 @@ Requires `npm run dev` running alongside.
 CSV → DuckDB (in-memory) → Profiler → Chart Recommender → Dashboard
                                      → Semantic Layer → AI Sidebar
 
-2nd CSV → Auto-Detect Relationships → ConnectionConfirm → AI JOINs
+2nd CSV → Auto-Detect Relationships → Table Added Modal → AI JOINs
 ```
 
 1. **Upload** — CSV is ingested into DuckDB as an in-memory table
@@ -113,7 +115,8 @@ src/
 │   ├── dashboards/page.tsx                   # Dashboard list
 │   └── page.tsx                              # Home (upload zone)
 ├── components/
-│   ├── connection-confirm.tsx                # Link tables modal (on 2nd CSV)
+│   ├── table-added-modal.tsx                 # "Table Added" modal (on CSV add)
+│   ├── table-manager.tsx                     # Table/column/relationship manager
 │   ├── glass-box/                            # AI decision transparency
 │   └── ...                                   # Charts, sidebar, filters
 ├── lib/
