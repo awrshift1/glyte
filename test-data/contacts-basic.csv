@@ -1,0 +1,101 @@
+id,first_name,last_name,email,company,title,status,campaign_id,created_at
+1,Raymond,Brooks,rbrooks@ripplecommer.com,Ripple Commerce,Account Executive,Lead,49,2025-05-01
+2,Mark,Sanchez,mark.sanchez@silverlinean.com,Silverline Analytics,CFO,Lead,31,2025-11-09
+3,Ryan,Turner,ryan.turner@prisminsight.com,Prism Insights,Business Development Manager,Customer,25,2025-09-11
+4,Ashley,Jackson,ashley.jackson@acmecorp.com,Acme Corp,CMO,Customer,15,2025-04-01
+5,Cynthia,Miller,cynthia.miller@terrafirma.com,TerraFirma,VP of Marketing,Churned,8,2025-08-22
+6,Cynthia,Bennett,cynthia@vertexsoluti.com,Vertex Solutions,Head of Analytics,Qualified,49,2025-08-15
+7,Patrick,Cook,patrick@novatech.com,NovaTech,Head of Finance,Qualified,11,2025-09-01
+8,Kimberly,Long,kimberly@fusiondynami.com,Fusion Dynamics,Director of Engineering,Lead,50,2025-09-24
+9,Benjamin,Walker,bwalker@brightpathai.com,Brightpath AI,Sales Manager,Lead,19,2025-05-01
+10,Kevin,Green,kevin.green@omniflow.com,OmniFlow,VP of Marketing,Lead,15,2025-07-16
+11,Alexander,Ramirez,aramirez@pinnaclegrou.com,Pinnacle Group,COO,Qualified,35,2025-08-27
+12,Linda,Clark,lclark@swiftscale.com,SwiftScale,CEO,Churned,38,2025-12-23
+13,Maria,Kelly,mkelly@stratoscloud.com,Stratos Cloud,Business Development Manager,Lead,23,2025-06-02
+14,Rebecca,Morgan,rebecca@omniflow.com,OmniFlow,Sales Manager,Customer,32,2025-04-23
+15,Sharon,Morales,smorales@techvault.com,TechVault,Head of Growth,Lead,44,2025-07-27
+16,Cynthia,Taylor,cynthia@ripplecommer.com,Ripple Commerce,Customer Success Manager,Lead,26,2025-10-31
+17,Raymond,Brown,raymond@quantumsyste.com,Quantum Systems,CTO,Qualified,30,2025-04-04
+18,Kimberly,Carter,kimberly.carter@summitfinanc.com,Summit Financial,Sales Manager,Qualified,22,2025-07-14
+19,Dennis,Turner,dennis.turner@corestack.com,CoreStack,CTO,Qualified,48,2025-10-04
+20,Brian,Lewis,brian@pinnaclegrou.com,Pinnacle Group,Director of Operations,Lead,2,2025-05-07
+21,Robert,Richardson,robert.richardson@silverlinean.com,Silverline Analytics,Customer Success Manager,Lead,43,2025-02-28
+22,Margaret,Reyes,mreyes@corestack.com,CoreStack,Head of Growth,Lead,39,2025-02-28
+23,Michelle,Wilson,michelle.wilson@arclight.com,ArcLight,Business Development Manager,Churned,37,2025-12-13
+24,Ronald,Alvarez,ronald.alvarez@evergreensof.com,Evergreen Software,VP of Sales,Qualified,41,2025-05-05
+25,Rachel,Foster,rachel@pulsetechnol.com,Pulse Technologies,CTO,Qualified,8,2025-10-17
+26,Brian,Morgan,brian@novatech.com,NovaTech,Product Manager,Lead,33,2025-11-28
+27,Mary,Turner,mary.turner@falcondigita.com,Falcon Digital,Head of Finance,Qualified,24,2025-11-22
+28,Alexander,Martin,alexander.martin@novatech.com,NovaTech,Head of Analytics,Customer,42,2025-05-19
+29,Jonathan,Jimenez,jjimenez@emberanalyti.com,Ember Analytics,Sales Manager,Qualified,47,2025-10-31
+30,Carol,Young,cyoung@quantumsyste.com,Quantum Systems,Customer Success Manager,Customer,16,2025-08-26
+31,Brandon,Bennett,bbennett@stratoscloud.com,Stratos Cloud,Director of Engineering,Lead,21,2025-04-04
+32,Margaret,Rivera,mrivera@corestack.com,CoreStack,Sales Manager,Lead,39,2025-12-26
+33,Brenda,Johnson,brenda.johnson@vertexsoluti.com,Vertex Solutions,Director of Engineering,Lead,47,2025-07-28
+34,Brenda,Ross,brenda@fusiondynami.com,Fusion Dynamics,Head of Finance,Qualified,46,2025-09-09
+35,Robert,Lopez,robert.lopez@zenithconsul.com,Zenith Consulting,Customer Success Manager,Qualified,16,2025-06-06
+36,Melissa,Stewart,melissa@terrafirma.com,TerraFirma,Product Manager,Lead,48,2025-10-09
+37,Dorothy,Hughes,dhughes@cobaltindust.com,Cobalt Industries,Director of Operations,Lead,15,2025-03-03
+38,Kenneth,Thomas,kenneth@omniflow.com,OmniFlow,Sales Manager,Lead,14,2025-09-05
+39,Patrick,Ramos,patrick@vertexsoluti.com,Vertex Solutions,Account Executive,Lead,7,2025-04-10
+40,Sandra,Campbell,scampbell@ironcladsecu.com,Ironclad Security,Sales Manager,Lead,35,2025-03-06
+41,Jennifer,Miller,jmiller@terrafirma.com,TerraFirma,Director of Engineering,Qualified,9,2025-11-23
+42,Susan,Johnson,sjohnson@prisminsight.com,Prism Insights,Head of Growth,Qualified,29,2025-06-24
+43,Michael,Allen,michael.allen@emberanalyti.com,Ember Analytics,CFO,Customer,26,2025-09-09
+44,Pamela,Watson,pamela.watson@cloudninesol.com,CloudNine Solutions,CFO,Lead,37,2025-06-05
+45,Ashley,Thomas,athomas@terrafirma.com,TerraFirma,CMO,Qualified,40,2025-04-26
+46,Timothy,Edwards,tedwards@granitesyste.com,Granite Systems,Customer Success Manager,Customer,28,2025-06-06
+47,Helen,Davis,helen@ripplecommer.com,Ripple Commerce,Director of Operations,Lead,49,2025-04-17
+48,Kimberly,James,kimberly.james@quantumsyste.com,Quantum Systems,Head of Growth,Lead,36,2025-02-08
+49,James,Evans,james@granitesyste.com,Granite Systems,Marketing Manager,Qualified,19,2025-01-17
+50,Andrew,Price,andrew@zenithconsul.com,Zenith Consulting,Marketing Manager,Customer,5,2025-12-18
+51,Kimberly,Watson,kimberly@arclight.com,ArcLight,VP of Sales,Customer,13,2025-08-06
+52,Anna,Lewis,alewis@silverlinean.com,Silverline Analytics,Head of Growth,Customer,5,2025-01-31
+53,Michelle,Kim,mkim@prisminsight.com,Prism Insights,Account Executive,Qualified,30,2025-12-19
+54,Rachel,Phillips,rachel@brightpathai.com,Brightpath AI,Head of Analytics,Qualified,29,2025-02-11
+55,Jennifer,Parker,jennifer@summitfinanc.com,Summit Financial,Customer Success Manager,Lead,6,2025-04-28
+56,Emma,Williams,emma@brightpathai.com,Brightpath AI,Director of Engineering,Lead,49,2025-03-31
+57,Eric,Wood,ewood@granitesyste.com,Granite Systems,Director of Engineering,Lead,38,2025-08-12
+58,Barbara,Stewart,bstewart@clearviewdat.com,ClearView Data,Head of Growth,Lead,43,2025-02-23
+59,Kevin,Evans,kevans@falcondigita.com,Falcon Digital,CTO,Qualified,26,2025-10-09
+60,Ryan,Lopez,rlopez@summitfinanc.com,Summit Financial,CMO,Lead,50,2025-07-26
+61,James,James,jjames@omniflow.com,OmniFlow,Head of Partnerships,Qualified,13,2025-09-23
+62,Helen,Long,helen@falcondigita.com,Falcon Digital,Sales Manager,Qualified,4,2025-04-15
+63,Stephen,Taylor,staylor@zenithconsul.com,Zenith Consulting,CEO,Customer,32,2025-03-04
+64,Benjamin,Cox,benjamin@fusiondynami.com,Fusion Dynamics,Revenue Operations Manager,Lead,36,2025-01-08
+65,Edward,Lopez,edward.lopez@horizonmedia.com,Horizon Media,VP of Marketing,Qualified,8,2025-11-28
+66,Amy,Alvarez,amy@zenithconsul.com,Zenith Consulting,Director of Engineering,Customer,27,2025-09-05
+67,Ashley,Collins,ashley.collins@terrafirma.com,TerraFirma,VP of Marketing,Lead,39,2025-09-18
+68,David,Scott,dscott@swiftscale.com,SwiftScale,CEO,Churned,33,2025-05-17
+69,Andrew,Castillo,andrew@pulsetechnol.com,Pulse Technologies,VP of Marketing,Qualified,43,2025-09-08
+70,Laura,Morgan,lmorgan@emberanalyti.com,Ember Analytics,Business Development Manager,Lead,49,2025-10-06
+71,Ryan,Adams,ryan@evergreensof.com,Evergreen Software,COO,Lead,25,2025-04-30
+72,Jennifer,Green,jennifer@emberanalyti.com,Ember Analytics,VP of Marketing,Churned,25,2025-07-17
+73,Amy,Jones,amy@vortexlabs.com,Vortex Labs,Head of Finance,Churned,22,2025-02-21
+74,Richard,Ortiz,richard.ortiz@cobaltindust.com,Cobalt Industries,VP of Marketing,Customer,27,2025-12-02
+75,Elizabeth,Stewart,estewart@corestack.com,CoreStack,CFO,Qualified,26,2025-11-29
+76,Kevin,Gray,kgray@omniflow.com,OmniFlow,Revenue Operations Manager,Churned,41,2025-09-07
+77,John,Richardson,john.richardson@pinnaclegrou.com,Pinnacle Group,CFO,Qualified,19,2025-04-27
+78,Sharon,Gonzalez,sgonzalez@nexusdigital.com,Nexus Digital,CTO,Lead,20,2025-01-15
+79,Carol,Davis,cdavis@zenithconsul.com,Zenith Consulting,CMO,Lead,10,2025-05-06
+80,Edward,Reed,edward.reed@ironcladsecu.com,Ironclad Security,Head of Analytics,Lead,40,2025-07-15
+81,Debra,Walker,debra@falcondigita.com,Falcon Digital,Sales Manager,Lead,30,2025-11-23
+82,Ryan,Allen,rallen@acmecorp.com,Acme Corp,Head of Growth,Churned,44,2025-10-07
+83,Elizabeth,Cruz,elizabeth@clearviewdat.com,ClearView Data,Sales Manager,Lead,28,2025-12-20
+84,Ryan,Hill,rhill@evergreensof.com,Evergreen Software,Business Development Manager,Customer,7,2025-05-02
+85,Pamela,Rivera,privera@prisminsight.com,Prism Insights,Business Development Manager,Churned,19,2025-01-12
+86,Emily,Johnson,emily@prisminsight.com,Prism Insights,Director of Engineering,Customer,4,2025-11-07
+87,Andrew,Jimenez,andrew@horizonmedia.com,Horizon Media,Director of Operations,Customer,15,2025-11-22
+88,Helen,Allen,helen@vortexlabs.com,Vortex Labs,CTO,Lead,41,2025-11-27
+89,Michelle,Cruz,michelle@datastream.com,DataStream,Account Executive,Lead,9,2025-02-16
+90,Carol,Myers,carol.myers@swiftscale.com,SwiftScale,CMO,Lead,35,2025-07-07
+91,Nicholas,Wright,nwright@blueskynetwo.com,BlueSky Networks,Product Manager,Churned,31,2025-06-01
+92,Joseph,Reyes,joseph.reyes@pinnaclegrou.com,Pinnacle Group,Business Development Manager,Customer,15,2025-12-13
+93,Brenda,Campbell,bcampbell@quantumsyste.com,Quantum Systems,Head of Finance,Lead,35,2025-03-05
+94,Melissa,Gray,melissa@corestack.com,CoreStack,VP of Sales,Lead,41,2025-07-10
+95,Gregory,Robinson,gregory.robinson@emberanalyti.com,Ember Analytics,Head of Analytics,Qualified,36,2025-06-17
+96,Mark,Chavez,mark@pinnaclegrou.com,Pinnacle Group,COO,Customer,45,2025-06-04
+97,Joseph,Moore,joseph.moore@datastream.com,DataStream,VP of Sales,Lead,32,2025-03-01
+98,Donald,Morgan,dmorgan@vortexlabs.com,Vortex Labs,Revenue Operations Manager,Qualified,43,2025-12-23
+99,Rebecca,Ramos,rramos@silverlinean.com,Silverline Analytics,COO,Qualified,32,2025-11-12
+100,Emily,Jones,emily.jones@momentumlabs.com,Momentum Labs,VP of Sales,Qualified,16,2025-07-05

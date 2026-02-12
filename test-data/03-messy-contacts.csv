@@ -1,0 +1,29 @@
+Name,Company,Title,Email,Phone,City,Notes
+John Smith,Acme Corp,CEO,john@acme.com,+1-555-0101,New York,Met at conference
+,Unknown LLC,,jane@unknown.com,,,"needs follow up"
+Bob,,Director of Sales,bob@somewhere.net,555.0103,San Francisco,
+  Alice Williams  , Tech Solutions Inc. ,  VP Engineering  ,alice@techsol.com, (555) 010-4 , London , "key contact, follow up Q2"
+Charlie Brown,Big Corp,Manager,CHARLIE@BIGCORP.COM,+44 7700 900000,,"Referred by John Smith, interested in Enterprise plan"
+,,,,,,empty row above
+Diana Prince,"Wayne Enterprises, LLC",Chief Technology Officer,diana@wayne.com,N/A,Gotham,
+Eve Torres,StartupXYZ,co-founder,eve@startupxyz.io,15550106,Austin TX,early stage - 3 employees
+Frank Castle,Acme Corp,Account Executive,frank@acme.com,+1 (555) 010-7,New York,same company as John
+Grace Hopper,,Rear Admiral,,,Arlington,historical figure - remove
+,,,test@test.com,,,DELETE THIS ROW
+Hans Mueller,Deutsche Bank AG,Geschäftsführer,hans.mueller@db.de,+49 69 910-0,Frankfurt am Main,"German title = Managing Director, speaks English"
+Isabelle Fontaine,Société Générale,Directrice Financière,i.fontaine@socgen.fr,,Paris,French title = CFO
+José García,Banco Santander,Director General,j.garcia@santander.es,+34 91 xxx xxxx,Madrid,
+Kim Park,"Samsung Electronics Co., Ltd",SVP Strategy,,+82-2-2255-0114,Seoul,
+Liam O'Brien,Tech Solutions Inc.,Software Engineer,liam.obrien@techsol.com,,Dublin,Not a decision maker
+Maria Silva,Acme Corp,intern,maria.s@acme.com,,São Paulo,summer intern 2025
+Nikolai Petrov,Gazprom,заместитель директора,n.petrov@gazprom.ru,+7 495 719-3001,Москва,Russian title = Deputy Director
+Olga Svensson,Spotify AB,Head of Data,olga@spotify.com,,Stockholm,
+Priya Sharma,Infosys Ltd,Senior Manager - Digital,priya.s@infosys.com,+91 80 2852 0261,Bangalore,
+Ravi Patel,TCS,, ravi@tcs.com ,+91-22-6778 9999,Mumbai,no title provided
+Sandra Chen,Apple Inc,Design Lead,s.chen@apple.com,,Cupertino,
+Tom Hardy,,,,+1-555-0122,,name only - no other data
+Uma Thurman,Netflix Inc,VP Content,uma.t@netflix.com,,Los Angeles,
+Viktor Krum,Durmstrang Industries,Export Manager,v.krum@durmstrang.bg,,Sofia,fictional
+Wei Zhang,"Alibaba Group Holding, Ltd",VP Cloud Computing,w.zhang@alibaba.com,,Hangzhou,
+Yuki Tanaka,Sony Group Corp,Product Manager,y.tanaka@sony.co.jp,+81-3-6748-2111,Tokyo,
+Zara Ahmed,,"Freelance Consultant",zara.freelance@gmail.com,+92 300 1234567,Karachi,no company

@@ -1,0 +1,31 @@
+id,contact_id,amount,stage,close_date,source
+1,1,18999.41,Closed Lost,2025-10-20,Referral
+2,2,20508.84,Proposal,2025-11-28,Referral
+3,3,47501.53,Closed Lost,2025-11-15,Referral
+4,4,11393.18,Discovery,2025-09-18,LinkedIn
+5,5,2046.52,Negotiation,2025-12-07,LinkedIn
+6,6,49452.22,Proposal,2025-10-13,Referral
+7,7,38492.71,Discovery,2025-10-04,Referral
+8,8,40839.6,Negotiation,2025-10-30,Google Ads
+9,9,8230.15,Proposal,2025-10-07,LinkedIn
+10,10,43061.9,Discovery,2025-08-29,LinkedIn
+11,11,27470.56,Closed Lost,2025-12-14,Referral
+12,12,33391.82,Discovery,2025-12-30,Facebook
+13,13,18553.87,Discovery,2025-08-08,Facebook
+14,14,1773.27,Negotiation,2025-07-06,Google Ads
+15,15,37344.18,Discovery,2025-12-15,Referral
+16,16,4114.34,Discovery,2025-12-05,Email
+17,17,26148.66,Closed Won,2025-05-08,LinkedIn
+18,18,11855.94,Negotiation,2025-12-25,Referral
+19,19,39378.12,Discovery,2025-12-16,Facebook
+20,20,32523.69,Proposal,2025-05-21,Email
+21,21,24470.11,Discovery,2025-06-17,LinkedIn
+22,22,6290.13,Proposal,2025-06-28,Referral
+23,23,4958.73,Discovery,2025-12-29,Email
+24,24,7183.39,Discovery,2025-10-18,LinkedIn
+25,25,27869.47,Negotiation,2025-12-04,LinkedIn
+26,26,30272.2,Proposal,2025-12-14,Facebook
+27,27,30665.91,Negotiation,2025-12-05,Email
+28,28,6606.29,Closed Won,2025-11-09,LinkedIn
+29,29,38679.17,Closed Won,2025-12-23,Facebook
+30,30,22073.43,Closed Won,2025-12-24,Google Ads

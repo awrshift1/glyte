@@ -1,0 +1,31 @@
+order_id,customer_name,product,category,quantity,unit_price,total,order_date,country,payment_method
+ORD-001,Alice Johnson,Wireless Mouse,Electronics,2,29.99,59.98,2025-01-15,USA,Credit Card
+ORD-002,Bob Smith,USB-C Hub,Electronics,1,49.99,49.99,2025-01-16,UK,PayPal
+ORD-003,Clara Diaz,Standing Desk,Furniture,1,399.00,399.00,2025-01-16,USA,Credit Card
+ORD-004,David Kim,Mechanical Keyboard,Electronics,1,89.99,89.99,2025-01-17,Canada,Debit Card
+ORD-005,Eva Mueller,Monitor Arm,Furniture,2,45.00,90.00,2025-01-18,Germany,PayPal
+ORD-006,Frank Li,Webcam HD,Electronics,1,59.99,59.99,2025-01-19,USA,Credit Card
+ORD-007,Grace Park,Desk Lamp,Furniture,3,24.99,74.97,2025-01-20,USA,Credit Card
+ORD-008,Henry Brown,Laptop Stand,Furniture,1,34.99,34.99,2025-01-21,UK,PayPal
+ORD-009,Irene Costa,Wireless Charger,Electronics,2,19.99,39.98,2025-01-22,Brazil,Credit Card
+ORD-010,Jake Wilson,Ergonomic Chair,Furniture,1,549.00,549.00,2025-01-23,USA,Credit Card
+ORD-011,Karen Lee,Bluetooth Speaker,Electronics,1,79.99,79.99,2025-01-24,Canada,Debit Card
+ORD-012,Luis Moreno,Desk Organizer,Furniture,4,12.99,51.96,2025-01-25,Mexico,PayPal
+ORD-013,Marie Dupont,Noise-Cancel Headphones,Electronics,1,199.99,199.99,2025-01-26,France,Credit Card
+ORD-014,Noah Taylor,Footrest,Furniture,1,39.99,39.99,2025-01-27,USA,Credit Card
+ORD-015,Olivia Chen,Power Strip,Electronics,2,15.99,31.98,2025-01-28,USA,Debit Card
+ORD-016,Pedro Santos,Filing Cabinet,Furniture,1,129.00,129.00,2025-01-29,Brazil,PayPal
+ORD-017,Quinn Murphy,USB Microphone,Electronics,1,69.99,69.99,2025-01-30,Ireland,Credit Card
+ORD-018,Rachel Green,Bookshelf,Furniture,1,189.00,189.00,2025-01-31,USA,Credit Card
+ORD-019,Sam Patel,Ethernet Cable 10m,Electronics,3,8.99,26.97,2025-02-01,UK,Debit Card
+ORD-020,Tina Wang,Whiteboard,Furniture,1,59.99,59.99,2025-02-02,USA,PayPal
+ORD-021,Umar Hassan,Portable SSD,Electronics,1,89.99,89.99,2025-02-03,UAE,Credit Card
+ORD-022,Vera Novak,Desk Mat,Furniture,2,22.99,45.98,2025-02-04,Czech Republic,PayPal
+ORD-023,Will Foster,Smart Plug Pack,Electronics,1,29.99,29.99,2025-02-05,USA,Credit Card
+ORD-024,Xena Alvarez,Cable Management Kit,Furniture,1,16.99,16.99,2025-02-06,Spain,Debit Card
+ORD-025,Yuki Tanaka,4K Webcam,Electronics,1,129.99,129.99,2025-02-07,Japan,Credit Card
+ORD-026,Zara Ahmed,Standing Desk Mat,Furniture,1,49.99,49.99,2025-02-08,Pakistan,PayPal
+ORD-027,Alice Johnson,Wireless Mouse,Electronics,1,29.99,29.99,2025-02-09,USA,Credit Card
+ORD-028,Bob Smith,Monitor Light Bar,Electronics,1,39.99,39.99,2025-02-10,UK,PayPal
+ORD-029,Clara Diaz,Privacy Screen,Electronics,1,44.99,44.99,2025-02-11,USA,Credit Card
+ORD-030,David Kim,Wrist Rest,Furniture,2,14.99,29.98,2025-02-12,Canada,Debit Card

@@ -1,0 +1,33 @@
+@import "tailwindcss";
+@import "@xyflow/react/dist/style.css";
+
+:root {
+  --background: #0f1729;
+  --foreground: #e2e8f0;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+}
+
+/* AI floating button pulse animation */
+.ai-pulse {
+  animation: ai-pulse 2s ease-in-out 1;
+}
+
+@keyframes ai-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.6); }
+  50% { box-shadow: 0 0 0 12px rgba(37, 99, 235, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0); }
+}
+
+/* Fade-in for contextual hint */
+.animate-fade-in {
+  animation: fade-in 0.3s ease-out;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateX(8px); }
+  to { opacity: 1; transform: translateX(0); }
+}
