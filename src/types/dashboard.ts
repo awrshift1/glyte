@@ -35,6 +35,7 @@ export interface DashboardConfig {
   updatedAt?: string;
   version?: number;
   previousVersions?: VersionEntry[];
+  excludedColumns?: string[];
   tables?: TableEntry[];
   relationships?: Relationship[];
   templateId?: string;
@@ -46,6 +47,7 @@ export interface TableEntry {
   rowCount: number;
   columnCount: number;
   addedAt: string;
+  excludedColumns?: string[];
 }
 
 export interface Relationship {
@@ -90,7 +92,7 @@ export interface KpiData {
   width: number;
 }
 
-export type GlassBoxDecisionType = "chart" | "relationship" | "template";
+export type GlassBoxDecisionType = "chart" | "template";
 export type GlassBoxDecisionStatus = "pending" | "accepted" | "rejected";
 
 export interface GlassBoxDecision {

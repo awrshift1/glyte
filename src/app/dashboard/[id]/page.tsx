@@ -12,12 +12,13 @@ import { AiPageContext } from "@/components/ai-page-context";
 import { DeleteConfirm } from "@/components/delete-confirm";
 import { ChartErrorBoundary } from "@/components/chart-error-boundary";
 import { VersionHistory } from "@/components/version-history";
-import { RelationshipEditor } from "@/components/relationship-editor";
+import { TableAddedModal } from "@/components/table-added-modal";
+import { TableManager } from "@/components/table-manager";
+import type { SuggestionWithId } from "@/components/table-added-modal";
 import { GlassBoxPanel } from "@/components/glass-box/glass-box-panel";
 import { generateStarterQuestions } from "@/lib/semantic-layer";
-import { Calendar, Download, Trash2, Clock, Plus, Link2, Database, GitBranch } from "lucide-react";
+import { Calendar, Download, Trash2, Clock, Plus, Database } from "lucide-react";
 import type { DashboardConfig, ChartData, KpiData, GlassBoxDecision } from "@/types/dashboard";
-
 interface DashboardResponse {
   config: DashboardConfig;
   charts: (ChartData | KpiData)[];
@@ -42,8 +43,15 @@ function DashboardContent() {
   const [error, setError] = useState<string | null>(null);
   const [showDelete, setShowDelete] = useState(false);
   const [showVersions, setShowVersions] = useState(false);
-  const [showRelations, setShowRelations] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [tableAddedInfo, setTableAddedInfo] = useState<{
+    tableName: string;
+    rowCount: number;
+    columnCount: number;
+    columns: string[];
+    suggestions: SuggestionWithId[];
+  } | null>(null);
+  const [showTableManager, setShowTableManager] = useState(false);
   const [addingTable, setAddingTable] = useState(false);
   const addTableRef = useRef<HTMLInputElement>(null);
   const [glassBoxDecisions, setGlassBoxDecisions] = useState<GlassBoxDecision[]>([]);
@@ -151,13 +159,82 @@ function DashboardContent() {
       const res = await fetch(`/api/dashboard/${id}/tables`, { method: "POST", body: formData });
       const d = await res.json();
       if (d.error) throw new Error(d.error);
-      fetchDashboard(); // Refresh dashboard
+
+      const { table, columns } = d as {
+        table: { tableName: string; rowCount: number; columnCount: number };
+        columns: string[];
+      };
+
+      // Auto-detect relationships
+      let suggestions: SuggestionWithId[] = [];
+      try {
+        const detectRes = await fetch(`/api/dashboard/${id}/detect-relationships`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({}),
+        });
+        const detectData = await detectRes.json();
+        if (detectData.suggestions?.length > 0) {
+          suggestions = detectData.suggestions;
+        }
+      } catch {
+        // Detection failed silently — non-blocking
+      }
+
+      // Always show Table Added modal
+      setTableAddedInfo({
+        tableName: table.tableName,
+        rowCount: table.rowCount,
+        columnCount: table.columnCount,
+        columns,
+        suggestions,
+      });
+
+      fetchDashboard();
     } catch (err) {
       setError(String(err));
     } finally {
       setAddingTable(false);
     }
   }, [id, fetchDashboard]);
+
+  const handleTableAddedDone = useCallback(async (excludedColumns: string[], acceptedRelIds: string[]) => {
+    const info = tableAddedInfo;
+    if (!info) return;
+
+    try {
+      // Save excluded columns
+      if (excludedColumns.length > 0) {
+        await fetch(`/api/dashboard/${id}/tables`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            tableName: info.tableName,
+            excludedColumns,
+          }),
+        });
+      }
+
+      // Accept selected relationships
+      if (acceptedRelIds.length > 0) {
+        await Promise.all(
+          acceptedRelIds.map((relId) =>
+            fetch(`/api/dashboard/${id}/relationships`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ relationshipId: relId, status: "accepted" }),
+            })
+          )
+        );
+      }
+
+      fetchDashboard();
+    } catch {
+      // Non-blocking
+    } finally {
+      setTableAddedInfo(null);
+    }
+  }, [id, tableAddedInfo, fetchDashboard]);
 
   if (loading && !data) {
     return (
@@ -187,7 +264,6 @@ function DashboardContent() {
   const kpis = charts.filter((c): c is KpiData => "value" in c);
   const visualCharts = charts.filter((c): c is ChartData => "data" in c);
   const tableCount = 1 + (config.tables?.length ?? 0);
-  const relCount = config.relationships?.length ?? 0;
 
   return (
     <div className="flex min-h-screen">
@@ -224,25 +300,6 @@ function DashboardContent() {
                   e.target.value = "";
                 }}
               />
-              {tableCount > 1 && (
-                <>
-                  <div className="h-5 w-px bg-[#334155] mx-1" />
-                  <Link
-                    href={`/dashboard/${id}/canvas`}
-                    className="flex items-center justify-center w-8 h-8 rounded-lg border border-[#334155] bg-[#1e293b] hover:bg-[#334155] text-[#cbd5e1] transition-colors"
-                    title="Canvas"
-                  >
-                    <GitBranch className="h-3.5 w-3.5" />
-                  </Link>
-                  <button
-                    onClick={() => setShowRelations(true)}
-                    className="flex items-center justify-center w-8 h-8 rounded-lg border border-[#334155] bg-[#1e293b] hover:bg-[#334155] text-[#cbd5e1] transition-colors"
-                    title="Relationships"
-                  >
-                    <Link2 className="h-3.5 w-3.5" />
-                  </button>
-                </>
-              )}
               <div className="h-5 w-px bg-[#334155] mx-1" />
               {config.previousVersions && config.previousVersions.length > 0 && (
                 <button
@@ -283,11 +340,11 @@ function DashboardContent() {
             </span>
             {tableCount > 1 && (
               <button
-                onClick={() => setShowRelations(true)}
+                onClick={() => setShowTableManager(true)}
                 className="flex-shrink-0 flex items-center gap-1 text-[11px] bg-[#2563eb]/10 border border-[#2563eb]/30 rounded-full px-2.5 py-1 text-[#2563eb] hover:bg-[#2563eb]/20 transition-colors"
               >
                 <Database className="h-3 w-3" />
-                {tableCount} tables{relCount > 0 ? ` \u00b7 ${relCount} rel` : ""}
+                {tableCount} tables
               </button>
             )}
           </div>
@@ -380,14 +437,27 @@ function DashboardContent() {
         onClose={() => setShowVersions(false)}
       />
 
-      {/* Relationship Editor */}
-      {showRelations && (
-        <RelationshipEditor
+      {/* Table Added Modal */}
+      {tableAddedInfo && (
+        <TableAddedModal
           dashboardId={id}
-          config={config}
-          open={showRelations}
-          onClose={() => setShowRelations(false)}
+          tableName={tableAddedInfo.tableName}
+          rowCount={tableAddedInfo.rowCount}
+          columnCount={tableAddedInfo.columnCount}
+          columns={tableAddedInfo.columns}
+          suggestions={tableAddedInfo.suggestions}
+          onDone={handleTableAddedDone}
+          onClose={() => setTableAddedInfo(null)}
+        />
+      )}
+
+      {/* Table Manager */}
+      {showTableManager && data && (
+        <TableManager
+          dashboardId={id}
+          config={data.config}
           onUpdate={fetchDashboard}
+          onClose={() => setShowTableManager(false)}
         />
       )}
     </div>

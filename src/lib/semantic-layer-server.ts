@@ -20,7 +20,9 @@ export async function buildMultiTablePrompt(config: DashboardConfig): Promise<st
     const cols = await query<{ column_name: string; data_type: string }>(
       `SELECT column_name, data_type FROM information_schema.columns WHERE table_name = ${quoteLiteral(t.tableName)} ORDER BY ordinal_position`
     );
-    const colLines = cols.map((c) => `    ${c.column_name} (${c.data_type})`).join("\n");
+    const excluded = new Set(t.excludedColumns ?? []);
+    const visibleCols = cols.filter((c) => !excluded.has(c.column_name));
+    const colLines = visibleCols.map((c) => `    ${c.column_name} (${c.data_type})`).join("\n");
     tableSchemaBlocks.push(`TABLE: "${t.tableName}" (${t.rowCount} rows)\n  COLUMNS:\n${colLines}`);
   }
   const tableSchemas = tableSchemaBlocks.join("\n\n");

@@ -55,7 +55,54 @@ export async function POST(
 
     await writeFile(configPath, JSON.stringify(config, null, 2));
 
-    return NextResponse.json({ table: tableEntry, totalTables: config.tables.length });
+    return NextResponse.json({
+      table: tableEntry,
+      columns,
+      totalTables: config.tables.length,
+    });
+  } catch (error) {
+    return NextResponse.json({ error: String(error) }, { status: 500 });
+  }
+}
+
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params;
+    const safeId = sanitizeDashboardId(id);
+    const configPath = path.join(DASHBOARDS_DIR, `${safeId}.json`);
+    const config: DashboardConfig = JSON.parse(await readFile(configPath, "utf-8"));
+
+    const { tableName, excludedColumns } = (await request.json()) as {
+      tableName: string;
+      excludedColumns: string[];
+    };
+
+    if (!tableName) {
+      return NextResponse.json({ error: "tableName required" }, { status: 400 });
+    }
+
+    // Primary table
+    if (tableName === config.tableName) {
+      config.excludedColumns = excludedColumns.length > 0 ? excludedColumns : undefined;
+      config.updatedAt = new Date().toISOString();
+      await writeFile(configPath, JSON.stringify(config, null, 2));
+      return NextResponse.json({ updated: tableName, excludedColumns: config.excludedColumns ?? [] });
+    }
+
+    const table = (config.tables ?? []).find((t) => t.tableName === tableName);
+    if (!table) {
+      return NextResponse.json({ error: "Table not found" }, { status: 404 });
+    }
+
+    table.excludedColumns = excludedColumns.length > 0 ? excludedColumns : undefined;
+    config.updatedAt = new Date().toISOString();
+
+    await writeFile(configPath, JSON.stringify(config, null, 2));
+
+    return NextResponse.json({ updated: tableName, excludedColumns: table.excludedColumns ?? [] });
   } catch (error) {
     return NextResponse.json({ error: String(error) }, { status: 500 });
   }

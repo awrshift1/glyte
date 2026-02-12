@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { loadDashboard } from "@/lib/dashboard-loader";
 import { detectRelationships, enhanceWithLlm } from "@/lib/relationship-detector";
-import { createRelationship, getRelationshipsByTables } from "@/lib/relationship-store";
+import { createRelationship, getRelationshipsByTables, type StoredRelationship } from "@/lib/relationship-store";
 import { sanitizeDashboardId } from "@/lib/dashboard-loader";
 
 export async function POST(
@@ -53,7 +53,7 @@ export async function POST(
     });
 
     // Auto-insert new suggestions as status='pending' into DuckDB
-    const inserted = [];
+    const inserted: StoredRelationship[] = [];
     for (const s of newSuggestions) {
       const rel = await createRelationship({
         dashboardId: safeId,
@@ -69,8 +69,14 @@ export async function POST(
       inserted.push(rel);
     }
 
+    // Merge suggestion metadata with stored IDs
+    const suggestionsWithIds = newSuggestions.map((s, i) => ({
+      ...s,
+      relationshipId: inserted[i]?.id,
+    }));
+
     return NextResponse.json({
-      suggestions: newSuggestions,
+      suggestions: suggestionsWithIds,
       inserted: inserted.length,
       total: suggestions.length,
       filtered: suggestions.length - newSuggestions.length,

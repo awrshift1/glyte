@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { Eye, ChevronDown, ChevronRight } from "lucide-react";
 import { ChartCard } from "./chart-card";
-import { RelationshipCard } from "./relationship-card";
 import type { GlassBoxDecision } from "@/types/dashboard";
 
 interface GlassBoxPanelProps {
@@ -63,13 +62,9 @@ export function GlassBoxPanel({ decisions, onAccept, onReject, onAcceptAllHigh }
               </button>
             </div>
           )}
-          {decisions.map((d) =>
-            d.type === "relationship" ? (
-              <RelationshipCard key={d.id} decision={d} onAccept={onAccept} onReject={onReject} />
-            ) : (
-              <ChartCard key={d.id} decision={d} onAccept={onAccept} onReject={onReject} />
-            )
-          )}
+          {decisions.map((d) => (
+            <ChartCard key={d.id} decision={d} onAccept={onAccept} onReject={onReject} />
+          ))}
         </div>
       )}
     </div>

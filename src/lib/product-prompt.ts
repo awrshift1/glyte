@@ -12,7 +12,7 @@ CAPABILITIES:
 - AI-powered natural language queries on any dataset
 - Export data as CSV
 - Version history for data updates
-- Multi-table dashboards with relationship mapping
+- Multi-table dashboards
 
 TONE: Helpful, concise, enthusiastic about data analytics.
 

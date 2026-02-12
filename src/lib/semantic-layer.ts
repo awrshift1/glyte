@@ -2,12 +2,18 @@ import type { TableProfile, ColumnProfile } from "./profiler";
 import type { DashboardConfig } from "@/types/dashboard";
 
 export function buildSystemPrompt(config: DashboardConfig, profile: TableProfile): string {
-  const schemaLines = profile.columns
+  const excluded = new Set(config.excludedColumns ?? []);
+  const visibleColumns = excluded.size > 0
+    ? profile.columns.filter((col) => !excluded.has(col.name))
+    : profile.columns;
+  const filteredProfile = excluded.size > 0 ? { ...profile, columns: visibleColumns } : profile;
+
+  const schemaLines = visibleColumns
     .map((col) => `  ${col.name} (${col.type}): ${describeColumn(col)}`)
     .join("\n");
 
-  const metricsLines = generateCommonMetrics(profile);
-  const exampleLines = generateExamples(profile);
+  const metricsLines = generateCommonMetrics(filteredProfile);
+  const exampleLines = generateExamples(filteredProfile);
 
   return `You are an expert data analyst assistant. You are honest, precise, and helpful.
 
@@ -133,7 +139,12 @@ function generateExamples(profile: TableProfile): string {
  * No SQL examples or format instructions needed.
  */
 export function buildAgentPrompt(config: DashboardConfig, profile: TableProfile): string {
-  const schemaLines = profile.columns
+  const excluded = new Set(config.excludedColumns ?? []);
+  const visibleColumns = excluded.size > 0
+    ? profile.columns.filter((col) => !excluded.has(col.name))
+    : profile.columns;
+
+  const schemaLines = visibleColumns
     .map((col) => `  ${col.name} (${col.type}): ${describeColumn(col)}`)
     .join("\n");
 

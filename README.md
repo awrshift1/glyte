@@ -14,11 +14,15 @@ I built Glyte because I needed it — running lead-gen campaigns across multiple
 
 - **Auto-Dashboard** — Upload CSV/TSV/Excel, get KPIs + line charts + bar charts + donut charts instantly
 - **AI Sidebar** — Ask questions in plain English ("What's the top campaign by response rate?"), get SQL + charts
+- **Multi-Table** — Add multiple CSVs to one dashboard. Glyte auto-detects matching columns and suggests links
+- **Smart Linking** — When you add a 2nd CSV, Glyte finds matching columns (by name + value overlap) and lets you link them with one click. AI then answers cross-table questions using JOINs
 - **Cross-Filtering** — Click any chart segment to filter the entire dashboard
+- **Glass Box** — See why AI chose each chart: confidence scores, column reasoning, accept/reject decisions
 - **MCP Server** — 4 tools (`list_dashboards`, `get_dashboard`, `query_dashboard`, `ask_dashboard`) for AI agents
 - **URL Filters** — Every filter state is in the URL. Copy, share, bookmark
 - **CSV Export** — Export filtered data with one click
 - **Date Range Filter** — Filter any temporal column by date range
+- **Version History** — Upload updated data to the same dashboard, track changes over time
 
 ## Quick Start
 
@@ -68,6 +72,8 @@ Requires `npm run dev` running alongside.
 ```
 CSV → DuckDB (in-memory) → Profiler → Chart Recommender → Dashboard
                                      → Semantic Layer → AI Sidebar
+
+2nd CSV → Auto-Detect Relationships → ConnectionConfirm → AI JOINs
 ```
 
 1. **Upload** — CSV is ingested into DuckDB as an in-memory table
@@ -94,25 +100,30 @@ The AI sidebar uses the same profile to build a dynamic system prompt, so the LL
 src/
 ├── app/
 │   ├── api/
-│   │   ├── chat/route.ts           # AI: NL → SQL → DuckDB → chart
-│   │   ├── dashboard/[id]/         # Dashboard data + query + export
-│   │   ├── dashboards/route.ts     # List dashboards
-│   │   ├── seed/route.ts           # Sample data
-│   │   └── upload/route.ts         # CSV upload → DuckDB → profile → charts
-│   ├── dashboard/[id]/page.tsx     # Dashboard view
-│   ├── dashboards/page.tsx         # Dashboard list
-│   └── page.tsx                    # Home (upload zone)
-├── components/                     # UI components
+│   │   ├── chat/route.ts                     # AI: NL → SQL → DuckDB → chart
+│   │   ├── dashboard/[id]/                   # Dashboard CRUD + query + export
+│   │   │   ├── tables/                       # Add CSV tables
+│   │   │   ├── relationships/                # CRUD relationships
+│   │   │   ├── detect-relationships/         # Auto-detect matching columns
+│   │   │   └── versions/                     # Version history
+│   │   ├── dashboards/route.ts               # List dashboards
+│   │   ├── seed/route.ts                     # Sample data
+│   │   └── upload/                           # CSV upload + diff detection
+│   ├── dashboard/[id]/page.tsx               # Dashboard view
+│   ├── dashboards/page.tsx                   # Dashboard list
+│   └── page.tsx                              # Home (upload zone)
+├── components/
+│   ├── connection-confirm.tsx                # Link tables modal (on 2nd CSV)
+│   ├── glass-box/                            # AI decision transparency
+│   └── ...                                   # Charts, sidebar, filters
 ├── lib/
-│   ├── chart-detection.ts          # AI result → chart type
-│   ├── chart-recommender.ts        # Profile → chart config
-│   ├── dashboard-loader.ts         # Shared loader + security + WHERE builder
-│   ├── duckdb.ts                   # DuckDB instance + query + ingest
-│   ├── profiler.ts                 # Column profiling
-│   └── semantic-layer.ts           # Profile → LLM system prompt
-├── mcp/                            # MCP server + tools
-├── store/                          # URL-based filter state
-└── types/                          # TypeScript interfaces
+│   ├── relationship-detector.ts              # Heuristic + LLM column matching
+│   ├── relationship-store.ts                 # DuckDB relationship CRUD
+│   ├── semantic-layer-server.ts              # Relationships → AI JOINs
+│   └── ...                                   # DuckDB, profiler, charts
+├── mcp/                                      # MCP server (4 tools)
+├── store/                                    # URL-based filter state
+└── types/                                    # TypeScript interfaces
 ```
 
 ## License
