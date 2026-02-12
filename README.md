@@ -33,12 +33,17 @@ Open [localhost:3000](http://localhost:3000). Upload a CSV or click "Sample mark
 
 ### AI Sidebar
 
-To enable AI-powered natural language queries, add your Anthropic API key:
+To enable AI-powered natural language queries, add an API key for any supported provider:
 
 ```bash
 cp .env.example .env.local
-# Edit .env.local and add your key
+# Edit .env.local — pick one:
+#   ANTHROPIC_API_KEY=sk-ant-...   (default, Claude Haiku)
+#   OPENAI_API_KEY=sk-...          (GPT-4o-mini)
+#   GOOGLE_GENERATIVE_AI_API_KEY=AI...  (Gemini Flash)
 ```
+
+Switch models via `GLYTE_MODEL` env var (format: `provider:model-id`).
 
 ### MCP Server
 
@@ -78,7 +83,7 @@ The AI sidebar uses the same profile to build a dynamic system prompt, so the LL
 |-------|------|
 | Framework | Next.js 16 (App Router) |
 | Database | DuckDB (embedded, in-memory) |
-| AI | Claude Haiku 4.5 |
+| AI | Anthropic / OpenAI / Google (via Vercel AI SDK) |
 | Charts | Recharts |
 | Styling | Tailwind CSS 4 |
 | MCP | @modelcontextprotocol/sdk |
