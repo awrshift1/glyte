@@ -59,15 +59,15 @@ Connect Glyte to Claude Code, Cursor, or any MCP-compatible client:
 {
   "mcpServers": {
     "glyte": {
-      "command": "node",
-      "args": ["src/mcp/server.ts"],
+      "command": "npx",
+      "args": ["tsx", "src/mcp/server.ts"],
       "cwd": "/path/to/glyte"
     }
   }
 }
 ```
 
-Requires `npm run dev` running alongside.
+Requires `npm run dev` running alongside (the MCP server calls Glyte's API for queries and AI chat).
 
 ## How It Works
 
