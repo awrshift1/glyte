@@ -79,11 +79,9 @@ export async function loadDashboard(id: string): Promise<DashboardConfig> {
   // Ensure primary table
   await ensureTable(config.tableName, config.csvPath);
 
-  // Ensure additional tables (multi-table dashboards)
-  if (config.tables) {
-    for (const t of config.tables) {
-      await ensureTable(t.tableName, t.csvPath);
-    }
+  // Ensure additional tables (multi-table dashboards) — parallel
+  if (config.tables && config.tables.length > 0) {
+    await Promise.all(config.tables.map((t) => ensureTable(t.tableName, t.csvPath)));
   }
 
   let configChanged = false;

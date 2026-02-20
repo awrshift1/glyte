@@ -5,29 +5,23 @@ import Link from "next/link";
 import { useParams, useSearchParams, useRouter, usePathname } from "next/navigation";
 import { Sidebar } from "@/components/sidebar";
 import { KpiCard } from "@/components/kpi-card";
-import { AutoChart } from "@/components/auto-chart";
 import { FilterBar } from "@/components/filter-bar";
 import { AiSidebar } from "@/components/ai-sidebar";
 import { AiPageContext } from "@/components/ai-page-context";
 import { DeleteConfirm } from "@/components/delete-confirm";
-import { ChartErrorBoundary } from "@/components/chart-error-boundary";
 import { VersionHistory } from "@/components/version-history";
 import { TableAddedModal } from "@/components/table-added-modal";
 import { TableManager } from "@/components/table-manager";
 import type { SuggestionWithId } from "@/components/table-added-modal";
 import { ExistingTablePicker } from "@/components/existing-table-picker";
-import { LeadGenToggle } from "@/components/lead-gen-toggle";
-import { FunnelChart } from "@/components/funnel-chart";
-import type { FunnelStage } from "@/components/funnel-chart";
-import { EnrichmentBoard } from "@/components/enrichment-board";
-import type { EnrichmentStatus } from "@/components/enrichment-board";
-import { ExportPanel } from "@/components/export-panel";
+import { LeadGenSection } from "@/components/lead-gen-section";
+import { ChartGrid } from "@/components/chart-grid";
 import { DimensionPills } from "@/components/dimension-pills";
 import { DimensionChart } from "@/components/dimension-chart";
-import { detectContactCsv } from "@/lib/contact-detector";
 import { generateStarterQuestions } from "@/lib/semantic-layer";
-import { Calendar, Download, Trash2, Clock, Plus, Database, X, ChevronDown, ChevronRight } from "lucide-react";
+import { Calendar, Download, Trash2, Clock, Plus, Database } from "lucide-react";
 import type { DashboardConfig, ChartData, KpiData, SchemaCompatibility } from "@/types/dashboard";
+
 interface DashboardResponse {
   config: DashboardConfig;
   charts: (ChartData | KpiData)[];
@@ -65,20 +59,7 @@ function DashboardContent() {
   const [addingTable, setAddingTable] = useState(false);
   const [showExistingPicker, setShowExistingPicker] = useState(false);
   const addTableRef = useRef<HTMLInputElement>(null);
-  const [hiddenChartIds, setHiddenChartIds] = useState<Set<string>>(new Set());
-  const [showMoreInsights, setShowMoreInsights] = useState(false);
-  // Lead Gen Mode — initialize from saved config
   const [leadGenMode, setLeadGenMode] = useState(false);
-  const [leadGenDismissed, setLeadGenDismissed] = useState(() => {
-    if (typeof window === "undefined") return false;
-    return localStorage.getItem(`glyte-leadgen-dismissed-${id}`) === "1";
-  });
-  const [classifying, setClassifying] = useState(false);
-  const [classifyProgress, setClassifyProgress] = useState(0);
-  const [funnelData, setFunnelData] = useState<FunnelStage[]>([]);
-  const [enrichmentData, setEnrichmentData] = useState<EnrichmentStatus[]>([]);
-  const [tierData, setTierData] = useState<{ tier: string; count: number }[]>([]);
-  const [contactDetection, setContactDetection] = useState<{ confidence: number; titleColumn?: string } | null>(null);
 
   const starterQuestions = useMemo(
     () => data?.config.profile ? generateStarterQuestions(data.config.profile) : undefined,
@@ -127,140 +108,6 @@ function DashboardContent() {
     fetchDashboard();
   }, [fetchDashboard]);
 
-  // Initialize hidden chart IDs from saved config
-  useEffect(() => {
-    if (data?.config.hiddenChartIds) {
-      setHiddenChartIds(new Set(data.config.hiddenChartIds));
-    }
-  }, [data?.config.hiddenChartIds]);
-
-  const handleHideChart = useCallback((chartId: string) => {
-    const next = new Set(hiddenChartIds);
-    next.add(chartId);
-    setHiddenChartIds(next);
-    fetch(`/api/dashboard/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ hiddenChartIds: [...next] }),
-    }).catch((e) => console.error("Failed to persist hiddenChartIds:", e));
-  }, [id, hiddenChartIds]);
-
-  const handleRestoreAllCharts = useCallback(() => {
-    setHiddenChartIds(new Set());
-    fetch(`/api/dashboard/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ hiddenChartIds: [] }),
-    }).catch((e) => console.error("Failed to persist hiddenChartIds:", e));
-  }, [id]);
-
-  // Detect contact CSV on mount
-  useEffect(() => {
-    if (!data?.config.profile || leadGenMode || leadGenDismissed || contactDetection) return;
-    const columns = data.config.profile.columns.map((c) => c.name);
-    const detection = detectContactCsv(columns);
-    if (detection.isContact) {
-      setContactDetection({
-        confidence: detection.confidence,
-        titleColumn: detection.titleColumn ?? undefined,
-      });
-    }
-  }, [data?.config.profile, leadGenMode, leadGenDismissed, contactDetection]);
-
-  const handleEnableLeadGen = useCallback(async () => {
-    if (!contactDetection?.titleColumn) return;
-    setClassifying(true);
-    setClassifyProgress(0);
-
-    try {
-      const companyCol = data?.config.profile?.columns.find(
-        (c) => /company|org|employer/i.test(c.name) && !/url|link|website/i.test(c.name)
-      );
-
-      const res = await fetch("/api/classify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          tableName: data?.config.tableName,
-          titleColumn: contactDetection.titleColumn,
-          companyColumn: companyCol?.name,
-        }),
-      });
-
-      if (!res.ok) throw new Error("Classification failed");
-
-      const reader = res.body?.getReader();
-      if (!reader) throw new Error("No response stream");
-
-      const decoder = new TextDecoder();
-      let buffer = "";
-      let completed = false;
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        const parts = buffer.split("\n\n");
-        buffer = parts.pop() || "";
-
-        for (const part of parts) {
-          if (!part.startsWith("data: ")) continue;
-          let event;
-          try {
-            event = JSON.parse(part.slice(6));
-          } catch {
-            continue;
-          }
-          if (event.type === "progress" && event.total) {
-            setClassifyProgress(Math.round((event.processed / event.total) * 100));
-          }
-          if (event.type === "complete") {
-            completed = true;
-            setLeadGenMode(true);
-            setContactDetection(null);
-          }
-          if (event.type === "error") {
-            throw new Error(event.error || "Classification failed");
-          }
-        }
-      }
-
-      // Persist to dashboard config after successful classification
-      if (completed) {
-        await fetch(`/api/dashboard/${id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ leadGenMode: true, classificationVersion: "v1.0" }),
-        }).catch((e) => console.error("Failed to persist leadGenMode:", e));
-      }
-
-      fetchDashboard();
-    } catch (err) {
-      setError(String(err));
-    } finally {
-      setClassifying(false);
-    }
-  }, [contactDetection, data?.config, fetchDashboard, id]);
-
-  // Fetch lead gen stats when mode is active
-  useEffect(() => {
-    if (!leadGenMode || !data?.config.tableName) return;
-    fetch(`/api/lead-gen-stats?table=${encodeURIComponent(data.config.tableName)}`)
-      .then((res) => res.json())
-      .then((stats) => {
-        if (stats.funnel) setFunnelData(stats.funnel);
-        if (stats.enrichment) setEnrichmentData(stats.enrichment);
-        if (stats.tiers) setTierData(stats.tiers);
-      })
-      .catch((e) => console.error("Failed to fetch lead-gen stats:", e));
-  }, [leadGenMode, data?.config.tableName]);
-
-  const handleDismissLeadGen = useCallback(() => {
-    setLeadGenDismissed(true);
-    setContactDetection(null);
-    localStorage.setItem(`glyte-leadgen-dismissed-${id}`, "1");
-  }, [id]);
-
   const handleDelete = useCallback(async () => {
     setDeleting(true);
     try {
@@ -283,10 +130,6 @@ function DashboardContent() {
         body: JSON.stringify({ leadGenMode: newMode }),
       });
       setLeadGenMode(newMode);
-      if (!newMode) {
-        setFunnelData([]);
-        setEnrichmentData([]);
-      }
       fetchDashboard();
     } catch (err) {
       setError(String(err));
@@ -308,7 +151,6 @@ function DashboardContent() {
         schemaMatch?: SchemaCompatibility;
       };
 
-      // Auto-detect relationships
       let suggestions: SuggestionWithId[] = [];
       try {
         const detectRes = await fetch(`/api/dashboard/${id}/detect-relationships`, {
@@ -321,10 +163,9 @@ function DashboardContent() {
           suggestions = detectData.suggestions;
         }
       } catch {
-        // Detection failed silently — non-blocking
+        // Detection failed silently
       }
 
-      // Always show Table Added modal
       setTableAddedInfo({
         tableName: table.tableName,
         rowCount: table.rowCount,
@@ -416,7 +257,6 @@ function DashboardContent() {
     if (!info) return;
 
     try {
-      // Save excluded columns
       if (excludedColumns.length > 0) {
         await fetch(`/api/dashboard/${id}/tables`, {
           method: "PATCH",
@@ -428,7 +268,6 @@ function DashboardContent() {
         });
       }
 
-      // Accept selected relationships
       if (acceptedRelIds.length > 0) {
         await Promise.all(
           acceptedRelIds.map((relId) =>
@@ -486,7 +325,6 @@ function DashboardContent() {
       <main className="flex-1 p-6 min-w-0 overflow-hidden">
         {/* Header */}
         <header className="flex flex-col gap-3 mb-6">
-          {/* Row 1: Breadcrumb + Toolbar */}
           <div className="flex items-center justify-between">
             <nav className="flex items-center text-sm text-[#94a3b8]">
               <Link href="/dashboards" className="hover:text-white transition-colors">Dashboards</Link>
@@ -550,7 +388,6 @@ function DashboardContent() {
             </div>
           </div>
 
-          {/* Row 2: Title + Meta badge */}
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-bold text-white tracking-tight truncate max-w-[500px]" title={config.title}>
               {config.title}
@@ -579,7 +416,6 @@ function DashboardContent() {
             )}
           </div>
 
-          {/* Date filter (only for temporal data) */}
           {temporalCol && (
             <div className="flex items-center gap-2">
               <Calendar className="h-3.5 w-3.5 text-[#94a3b8]" />
@@ -600,34 +436,18 @@ function DashboardContent() {
           )}
         </header>
 
-        {/* Active Filters */}
         <FilterBar />
 
-        {/* Lead Gen Toggle */}
-        {contactDetection && !leadGenMode && !classifying && (
-          <LeadGenToggle
-            confidence={contactDetection.confidence}
-            titleColumn={contactDetection.titleColumn}
-            onEnable={handleEnableLeadGen}
-            onDismiss={handleDismissLeadGen}
-          />
-        )}
-
-        {/* Classification Progress */}
-        {classifying && (
-          <div className="mb-6 bg-[#1e293b] border border-[#334155] rounded-lg px-5 py-4">
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-sm text-[#cbd5e1]">Classifying contacts...</p>
-              <span className="text-xs text-[#94a3b8]">{classifyProgress}%</span>
-            </div>
-            <div className="h-1.5 bg-[#0f1729] rounded-full overflow-hidden">
-              <div
-                className="h-full bg-[#2563eb] rounded-full transition-all duration-300"
-                style={{ width: `${classifyProgress}%` }}
-              />
-            </div>
-          </div>
-        )}
+        {/* Lead Gen Section (isolated re-render boundary) */}
+        <LeadGenSection
+          dashboardId={id}
+          tableName={config.tableName}
+          profile={config.profile}
+          leadGenMode={leadGenMode}
+          onModeChange={setLeadGenMode}
+          onError={setError}
+          onRefresh={fetchDashboard}
+        />
 
         {/* KPI Row */}
         {kpis.length > 0 && (
@@ -651,101 +471,12 @@ function DashboardContent() {
           </>
         )}
 
-        {/* Lead Gen: Funnel & Enrichment (shown when leadGenMode active) */}
-        {leadGenMode && funnelData.length > 0 && (
-          <div className="bg-[#1e293b] border border-[#334155] rounded-lg p-5 mb-6">
-            <FunnelChart stages={funnelData} title="Lead Gen Funnel" />
-          </div>
-        )}
-
-        {leadGenMode && enrichmentData.length > 0 && (
-          <div className="mb-6">
-            <h3 className="text-sm font-medium text-gray-300 mb-3">Data Health</h3>
-            <EnrichmentBoard
-              statuses={enrichmentData}
-              total={enrichmentData.reduce((sum, s) => sum + s.count, 0)}
-              tableName={`${config.tableName}_enriched`}
-            />
-          </div>
-        )}
-
-        {leadGenMode && (
-          <ExportPanel tableName={`${config.tableName}_enriched`} tiers={tierData} />
-        )}
-
-        {/* Chart Grid */}
-        {(() => {
-          const visibleCharts = visualCharts
-            .filter((c) => !hiddenChartIds.has(c.id))
-            .sort((a, b) => (b.confidence ?? 0.7) - (a.confidence ?? 0.7));
-          const primaryCharts = visibleCharts.slice(0, 8);
-          const overflowCharts = visibleCharts.slice(8);
-          const hiddenCount = visualCharts.length - visibleCharts.length;
-
-          const renderChartCard = (chart: ChartData) => (
-            <div
-              key={chart.id}
-              className="relative group bg-[#1e293b] border border-[#334155] rounded-lg p-5 overflow-hidden"
-              style={{ gridColumn: `span ${chart.width} / span ${chart.width}` }}
-            >
-              <button
-                onClick={() => handleHideChart(chart.id)}
-                className="absolute top-2 right-2 z-10 p-1 rounded-md bg-[#0f1729]/80 border border-[#334155] text-[#94a3b8] hover:text-white hover:border-[#ef4444]/50 hover:bg-[#ef4444]/10 opacity-0 group-hover:opacity-100 transition-all"
-                title="Hide chart"
-              >
-                <X className="h-3.5 w-3.5" />
-              </button>
-              <div className="mb-4">
-                <h3 className="text-sm font-medium text-gray-300">
-                  {chart.title}
-                </h3>
-                {chart.reason && (
-                  <p className="text-[10px] text-gray-500 mt-0.5">{chart.reason}</p>
-                )}
-              </div>
-              <ChartErrorBoundary chartTitle={chart.title}>
-                <AutoChart chart={chart} />
-              </ChartErrorBoundary>
-            </div>
-          );
-
-          return (
-            <>
-              {hiddenCount > 0 && (
-                <div className="flex items-center gap-2 mb-3">
-                  <span className="text-xs text-[#94a3b8]">
-                    {hiddenCount} chart{hiddenCount > 1 ? "s" : ""} hidden
-                  </span>
-                  <button
-                    onClick={handleRestoreAllCharts}
-                    className="text-xs text-[#2563eb] hover:text-[#3b82f6] transition-colors"
-                  >
-                    Show all
-                  </button>
-                </div>
-              )}
-              <div className="grid grid-cols-12 gap-4">
-                {primaryCharts.map(renderChartCard)}
-              </div>
-              {overflowCharts.length > 0 && (
-                <div className="mt-6">
-                  <button
-                    onClick={() => setShowMoreInsights((v) => !v)}
-                    className="flex items-center gap-1.5 text-sm text-[#94a3b8] hover:text-white transition-colors mb-3"
-                  >
-                    {showMoreInsights ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-                    More insights ({overflowCharts.length})
-                  </button>
-                  {showMoreInsights && (
-                    <div className="grid grid-cols-12 gap-4">
-                      {overflowCharts.map(renderChartCard)}
-                    </div>
-                  )}
-                </div>
-              )}
-            </>
-          );
-        })()}
+        {/* Chart Grid (isolated re-render boundary) */}
+        <ChartGrid
+          dashboardId={id}
+          charts={visualCharts}
+          initialHiddenIds={config.hiddenChartIds}
+        />
       </main>
 
       <AiSidebar
@@ -753,7 +484,6 @@ function DashboardContent() {
         starterQuestions={starterQuestions}
       />
 
-      {/* Delete Confirmation */}
       {showDelete && (
         <DeleteConfirm
           dashboardTitle={config.title}
@@ -764,14 +494,12 @@ function DashboardContent() {
         />
       )}
 
-      {/* Version History */}
       <VersionHistory
         dashboardId={id}
         open={showVersions}
         onClose={() => setShowVersions(false)}
       />
 
-      {/* Table Added Modal */}
       {tableAddedInfo && (
         <TableAddedModal
           dashboardId={id}
@@ -788,7 +516,6 @@ function DashboardContent() {
         />
       )}
 
-      {/* Existing Table Picker */}
       {showExistingPicker && (
         <ExistingTablePicker
           dashboardId={id}
@@ -797,7 +524,6 @@ function DashboardContent() {
         />
       )}
 
-      {/* Table Manager */}
       {showTableManager && data && (
         <TableManager
           dashboardId={id}

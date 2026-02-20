@@ -13,11 +13,14 @@ export async function GET() {
       return NextResponse.json({ dashboards: [] });
     }
 
-    const dashboards: DashboardConfig[] = [];
-    for (const file of files.filter((f) => f.endsWith(".json"))) {
-      const content = await readFile(path.join(configDir, file), "utf-8");
-      dashboards.push(JSON.parse(content));
-    }
+    const dashboards: DashboardConfig[] = await Promise.all(
+      files
+        .filter((f) => f.endsWith(".json"))
+        .map(async (file) => {
+          const content = await readFile(path.join(configDir, file), "utf-8");
+          return JSON.parse(content) as DashboardConfig;
+        }),
+    );
 
     dashboards.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 

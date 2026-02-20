@@ -50,28 +50,46 @@ async function handleExport(tableName: string, presetId?: string | null) {
     return Response.json({ error: "No data matching filter" }, { status: 404 });
   }
 
-  // Build CSV
   const columns = Object.keys(rows[0]);
-  const csvLines: string[] = [columns.join(",")];
-
-  for (const row of rows) {
-    const values = columns.map((col) => {
-      const val = row[col];
-      if (val === null || val === undefined) return "";
-      const str = String(val);
-      if (str.includes(",") || str.includes('"') || str.includes("\n")) {
-        return `"${str.replace(/"/g, '""')}"`;
-      }
-      return str;
-    });
-    csvLines.push(values.join(","));
-  }
-
-  const csv = csvLines.join("\n");
   const date = new Date().toISOString().split("T")[0];
   const filename = `${tableName}_${filterDesc}_${rows.length}_${date}.csv`;
 
-  return new Response(csv, {
+  // Stream CSV in batches to avoid building full string in memory
+  const BATCH = 1000;
+  const encoder = new TextEncoder();
+
+  const stream = new ReadableStream({
+    start(controller) {
+      // Header row
+      controller.enqueue(encoder.encode(columns.join(",") + "\n"));
+
+      // Data rows in batches
+      for (let i = 0; i < rows.length; i += BATCH) {
+        const end = Math.min(i + BATCH, rows.length);
+        let chunk = "";
+        for (let j = i; j < end; j++) {
+          const row = rows[j];
+          const line = columns
+            .map((col) => {
+              const val = row[col];
+              if (val === null || val === undefined) return "";
+              const str = String(val);
+              if (str.includes(",") || str.includes('"') || str.includes("\n")) {
+                return `"${str.replace(/"/g, '""')}"`;
+              }
+              return str;
+            })
+            .join(",");
+          chunk += line + "\n";
+        }
+        controller.enqueue(encoder.encode(chunk));
+      }
+
+      controller.close();
+    },
+  });
+
+  return new Response(stream, {
     headers: {
       "Content-Type": "text/csv; charset=utf-8",
       "Content-Disposition": `attachment; filename="${filename}"`,

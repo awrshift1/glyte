@@ -1,4 +1,4 @@
-import { DuckDBInstance } from "@duckdb/node-api";
+import { DuckDBInstance, DuckDBConnection } from "@duckdb/node-api";
 import path from "path";
 import fs from "fs";
 import { runMigrations } from "./migrations";
@@ -6,12 +6,16 @@ import { quoteIdent, quoteLiteral, safeCsvPath } from "./sql-utils";
 import type { SchemaCompatibility } from "@/types/dashboard";
 
 const DB_PATH = path.join(process.cwd(), "data", "glyte.duckdb");
+const POOL_SIZE = 5;
 
 // Survive Next.js hot reload — attach to globalThis
-const globalDb = globalThis as unknown as { __glyte_db?: DuckDBInstance };
+const globalState = globalThis as unknown as {
+  __glyte_db?: DuckDBInstance;
+  __glyte_pool?: DuckDBConnection[];
+};
 
 async function getInstance(): Promise<DuckDBInstance> {
-  if (globalDb.__glyte_db) return globalDb.__glyte_db;
+  if (globalState.__glyte_db) return globalState.__glyte_db;
 
   // Ensure data directory exists
   const dataDir = path.dirname(DB_PATH);
@@ -30,22 +34,42 @@ async function getInstance(): Promise<DuckDBInstance> {
   }
 
   await runMigrations(instance);
-  globalDb.__glyte_db = instance;
+  globalState.__glyte_db = instance;
+  globalState.__glyte_pool = [];
   return instance;
+}
+
+// Connection pool — reuse connections instead of create/destroy per query
+async function acquireConnection(): Promise<DuckDBConnection> {
+  const db = await getInstance();
+  const pool = globalState.__glyte_pool!;
+  return pool.pop() || db.connect();
+}
+
+function releaseConnection(conn: DuckDBConnection, discard = false): void {
+  const pool = globalState.__glyte_pool;
+  if (!discard && pool && pool.length < POOL_SIZE) {
+    pool.push(conn);
+  } else {
+    try { conn.closeSync(); } catch { /* already closed */ }
+  }
 }
 
 // Check if table exists in persistent DB
 async function tableExists(tableName: string): Promise<boolean> {
-  const db = await getInstance();
-  const conn = await db.connect();
+  const conn = await acquireConnection();
+  let bad = false;
   try {
     const result = await conn.run(
       `SELECT COUNT(*) as cnt FROM information_schema.tables WHERE table_schema = 'main' AND table_name = ${quoteLiteral(tableName)}`
     );
     const rows = await result.getRows();
     return Number(rows[0][0]) > 0;
+  } catch (e) {
+    bad = true;
+    throw e;
   } finally {
-    conn.closeSync();
+    releaseConnection(conn, bad);
   }
 }
 
@@ -61,8 +85,8 @@ const QUERY_TIMEOUT_MS = 30_000;
 export async function query<T = Record<string, unknown>>(
   sql: string
 ): Promise<T[]> {
-  const db = await getInstance();
-  const conn = await db.connect();
+  const conn = await acquireConnection();
+  let bad = false;
   try {
     const result = await Promise.race([
       conn.run(sql),
@@ -88,8 +112,11 @@ export async function query<T = Record<string, unknown>>(
       });
       return obj as T;
     });
+  } catch (e) {
+    bad = true;
+    throw e;
   } finally {
-    conn.closeSync();
+    releaseConnection(conn, bad);
   }
 }
 
@@ -97,8 +124,8 @@ export async function ingestCsv(
   csvPath: string,
   tableName: string
 ): Promise<{ rows: number; columns: string[] }> {
-  const db = await getInstance();
-  const conn = await db.connect();
+  const conn = await acquireConnection();
+  let bad = false;
   try {
     const safeTable = quoteIdent(tableName);
     const safePath = safeCsvPath(csvPath);
@@ -129,18 +156,24 @@ export async function ingestCsv(
     }
 
     return { rows: count, columns };
+  } catch (e) {
+    bad = true;
+    throw e;
   } finally {
-    conn.closeSync();
+    releaseConnection(conn, bad);
   }
 }
 
 export async function dropTable(tableName: string): Promise<void> {
-  const db = await getInstance();
-  const conn = await db.connect();
+  const conn = await acquireConnection();
+  let bad = false;
   try {
     await conn.run(`DROP TABLE IF EXISTS ${quoteIdent(tableName)}`);
+  } catch (e) {
+    bad = true;
+    throw e;
   } finally {
-    conn.closeSync();
+    releaseConnection(conn, bad);
   }
 }
 
@@ -186,8 +219,8 @@ export async function appendCsv(
   sourceTable: string,
   sourceLabel: string
 ): Promise<{ newRows: number; totalRows: number }> {
-  const db = await getInstance();
-  const conn = await db.connect();
+  const conn = await acquireConnection();
+  let bad = false;
   try {
     const safeTarget = quoteIdent(targetTable);
 
@@ -220,8 +253,11 @@ export async function appendCsv(
     const totalRows = Number((await countAfter.getRows())[0][0]);
 
     return { newRows, totalRows };
+  } catch (e) {
+    bad = true;
+    throw e;
   } finally {
-    conn.closeSync();
+    releaseConnection(conn, bad);
   }
 }
 

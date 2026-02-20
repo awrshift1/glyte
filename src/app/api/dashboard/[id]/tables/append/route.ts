@@ -56,12 +56,23 @@ export async function POST(
       (r) => r.fromTable !== tableName && r.toTable !== tableName
     );
 
-    // Re-profile primary table (now includes _source column)
+    // Re-profile primary table
+    const prevColumnNames = new Set(config.profile?.columns.map((c) => c.name) ?? []);
     const profile = await profileTable(config.tableName);
+    const newColumnNames = new Set(profile.columns.map((c) => c.name));
 
-    // Regenerate charts from new profile
-    const selection = selectTemplate(profile);
-    const charts = selection.template.generate(profile);
+    // Only regenerate charts if columns changed (new columns added from append)
+    const columnsChanged =
+      prevColumnNames.size !== newColumnNames.size ||
+      [...newColumnNames].some((c) => !prevColumnNames.has(c));
+
+    let charts = config.charts;
+    let templateId = config.templateId;
+    if (columnsChanged || charts.length <= 1) {
+      const selection = selectTemplate(profile);
+      charts = selection.template.generate(profile);
+      templateId = selection.template.id;
+    }
 
     // Track appended source
     const appendedSource: AppendedSource = {
@@ -78,7 +89,7 @@ export async function POST(
     config.columnCount = profile.columns.length;
     config.profile = profile;
     config.charts = charts;
-    config.templateId = selection.template.id;
+    config.templateId = templateId;
     config.updatedAt = new Date().toISOString();
 
     await writeFile(configPath, JSON.stringify(config, null, 2));
