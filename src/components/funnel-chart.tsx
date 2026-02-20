@@ -31,11 +31,12 @@ export function FunnelChart({ stages, title }: FunnelChartProps) {
     );
   }
 
-  const total = stages[0]?.value || 1;
-  const data = stages.map((stage) => ({
+  const icpValue = stages[1]?.value || stages[0]?.value || 1;
+  const data = stages.map((stage, i) => ({
     name: stage.label,
     value: stage.value,
-    percentage: Math.round((stage.value / total) * 100),
+    // First stage (Total) = 100%, rest = % of ICP (second stage)
+    percentage: i === 0 ? 100 : Math.round((stage.value / icpValue) * 100),
     color: stage.color,
   }));
 
@@ -63,12 +64,15 @@ export function FunnelChart({ stages, title }: FunnelChartProps) {
             width={110}
           />
           <Tooltip
+            cursor={{ fill: "rgba(255,255,255,0.05)" }}
             contentStyle={{
               background: "#1e293b",
               border: "1px solid #334155",
               borderRadius: 8,
-              color: "#cbd5e1",
+              color: "#e2e8f0",
             }}
+            labelStyle={{ color: "#94a3b8", fontSize: 12 }}
+            itemStyle={{ color: "#e2e8f0" }}
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             formatter={((value: number, _name: string, props: any) => [
               `${value.toLocaleString()} (${props.payload.percentage}%)`,
@@ -89,7 +93,7 @@ export function FunnelChart({ stages, title }: FunnelChartProps) {
             <span className="text-white font-medium">
               {stage.percentage}%
             </span>{" "}
-            of total
+            of ICP
           </span>
         ))}
       </div>

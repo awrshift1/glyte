@@ -18,6 +18,9 @@ export function KpiCard({ title, value }: KpiCardProps) {
 
 function formatValue(title: string, value: number): string {
   const t = title.toLowerCase();
+  if (/rate|percent|%|ratio|coverage/.test(t)) {
+    return `${value % 1 === 0 ? value : value.toFixed(1)}%`;
+  }
   if (/revenue|spend|cost|price|amount|budget/.test(t)) {
     if (value >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}M`;
     if (value >= 1_000) return `$${(value / 1_000).toFixed(1)}K`;

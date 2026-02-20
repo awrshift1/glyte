@@ -37,8 +37,8 @@ export async function GET(request: NextRequest) {
         ? "linkedin"
         : null;
 
-  // Funnel stages
-  const funnelQueries: { label: string; sql: string; color: string }[] = [
+  // Build all funnel queries
+  const funnelDefs: { label: string; sql: string; color: string }[] = [
     {
       label: "Total",
       sql: `SELECT COUNT(*) as cnt FROM ${enrichedView}`,
@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
   ];
 
   if (emailCol) {
-    funnelQueries.push({
+    funnelDefs.push({
       label: "Has Email",
       sql: `SELECT COUNT(*) as cnt FROM ${enrichedView} WHERE icp_tier IS NOT NULL AND ${quoteIdent(emailCol)} IS NOT NULL AND ${quoteIdent(emailCol)} != ''`,
       color: "#22c55e",
@@ -60,7 +60,7 @@ export async function GET(request: NextRequest) {
   }
 
   if (linkedinCol) {
-    funnelQueries.push({
+    funnelDefs.push({
       label: "Has LinkedIn",
       sql: `SELECT COUNT(*) as cnt FROM ${enrichedView} WHERE icp_tier IS NOT NULL AND ${quoteIdent(linkedinCol)} IS NOT NULL AND ${quoteIdent(linkedinCol)} != ''`,
       color: "#06b6d4",
@@ -68,83 +68,82 @@ export async function GET(request: NextRequest) {
   }
 
   if (emailCol && linkedinCol) {
-    funnelQueries.push({
+    funnelDefs.push({
       label: "Complete",
       sql: `SELECT COUNT(*) as cnt FROM ${enrichedView} WHERE icp_tier IS NOT NULL AND ${quoteIdent(emailCol)} IS NOT NULL AND ${quoteIdent(emailCol)} != '' AND ${quoteIdent(linkedinCol)} IS NOT NULL AND ${quoteIdent(linkedinCol)} != ''`,
       color: "#a855f7",
     });
   }
 
-  const funnel = [];
-  for (const stage of funnelQueries) {
-    try {
-      const rows = await query<{ cnt: number }>(stage.sql);
-      funnel.push({
-        label: stage.label,
-        value: Number(rows[0]?.cnt ?? 0),
-        color: stage.color,
-        percentage: 0,
-      });
-    } catch {
-      funnel.push({ label: stage.label, value: 0, color: stage.color, percentage: 0 });
-    }
-  }
+  // Execute all funnel queries in parallel
+  const funnelResults = await Promise.all(
+    funnelDefs.map(async (def) => {
+      try {
+        const rows = await query<{ cnt: number }>(def.sql);
+        return { label: def.label, value: Number(rows[0]?.cnt ?? 0), color: def.color };
+      } catch {
+        return { label: def.label, value: 0, color: def.color };
+      }
+    }),
+  );
 
-  // Calculate drop-off percentages
-  for (let i = 0; i < funnel.length; i++) {
-    funnel[i].percentage =
-      i === 0
-        ? 100
-        : funnel[i - 1].value > 0
-          ? Math.round((funnel[i].value / funnel[i - 1].value) * 100)
-          : 0;
-  }
+  const funnel = funnelResults;
 
-  // Enrichment status
-  const enrichment: { label: string; count: number; color: string; filterQuery?: string }[] = [];
+  // Enrichment status (parallel)
+  const enrichment: { label: string; count: number; color: string; presetId?: string }[] = [];
 
   if (emailCol && linkedinCol) {
-    const enrichQueries = [
+    const enrichDefs = [
       {
         label: "Complete",
         sql: `SELECT COUNT(*) as cnt FROM ${enrichedView} WHERE icp_tier IS NOT NULL AND ${quoteIdent(emailCol)} IS NOT NULL AND ${quoteIdent(emailCol)} != '' AND ${quoteIdent(linkedinCol)} IS NOT NULL AND ${quoteIdent(linkedinCol)} != ''`,
         color: "#22c55e",
-        filterQuery: `icp_tier IS NOT NULL AND ${quoteIdent(emailCol)} IS NOT NULL AND ${quoteIdent(emailCol)} != '' AND ${quoteIdent(linkedinCol)} IS NOT NULL AND ${quoteIdent(linkedinCol)} != ''`,
+        presetId: "enrichment-complete",
       },
       {
         label: "Need Email",
         sql: `SELECT COUNT(*) as cnt FROM ${enrichedView} WHERE icp_tier IS NOT NULL AND (${quoteIdent(emailCol)} IS NULL OR ${quoteIdent(emailCol)} = '') AND ${quoteIdent(linkedinCol)} IS NOT NULL AND ${quoteIdent(linkedinCol)} != ''`,
         color: "#eab308",
-        filterQuery: `icp_tier IS NOT NULL AND (${quoteIdent(emailCol)} IS NULL OR ${quoteIdent(emailCol)} = '') AND ${quoteIdent(linkedinCol)} IS NOT NULL`,
+        presetId: "enrichment-need-email",
       },
       {
         label: "Need LinkedIn",
         sql: `SELECT COUNT(*) as cnt FROM ${enrichedView} WHERE icp_tier IS NOT NULL AND ${quoteIdent(emailCol)} IS NOT NULL AND ${quoteIdent(emailCol)} != '' AND (${quoteIdent(linkedinCol)} IS NULL OR ${quoteIdent(linkedinCol)} = '')`,
         color: "#f97316",
-        filterQuery: `icp_tier IS NOT NULL AND ${quoteIdent(emailCol)} IS NOT NULL AND (${quoteIdent(linkedinCol)} IS NULL OR ${quoteIdent(linkedinCol)} = '')`,
+        presetId: "enrichment-need-linkedin",
       },
       {
         label: "Need Both",
         sql: `SELECT COUNT(*) as cnt FROM ${enrichedView} WHERE icp_tier IS NOT NULL AND (${quoteIdent(emailCol)} IS NULL OR ${quoteIdent(emailCol)} = '') AND (${quoteIdent(linkedinCol)} IS NULL OR ${quoteIdent(linkedinCol)} = '')`,
         color: "#ef4444",
-        filterQuery: `icp_tier IS NOT NULL AND (${quoteIdent(emailCol)} IS NULL OR ${quoteIdent(emailCol)} = '') AND (${quoteIdent(linkedinCol)} IS NULL OR ${quoteIdent(linkedinCol)} = '')`,
+        presetId: "enrichment-need-both",
       },
     ];
 
-    for (const eq of enrichQueries) {
-      try {
-        const rows = await query<{ cnt: number }>(eq.sql);
-        enrichment.push({
-          label: eq.label,
-          count: Number(rows[0]?.cnt ?? 0),
-          color: eq.color,
-          filterQuery: eq.filterQuery,
-        });
-      } catch {
-        enrichment.push({ label: eq.label, count: 0, color: eq.color });
-      }
-    }
+    const enrichResults = await Promise.all(
+      enrichDefs.map(async (eq) => {
+        try {
+          const rows = await query<{ cnt: number }>(eq.sql);
+          return {
+            label: eq.label,
+            count: Number(rows[0]?.cnt ?? 0),
+            color: eq.color,
+            presetId: eq.presetId,
+          };
+        } catch {
+          return { label: eq.label, count: 0, color: eq.color, presetId: eq.presetId };
+        }
+      }),
+    );
+
+    enrichment.push(...enrichResults);
   }
 
-  return NextResponse.json({ funnel, enrichment });
+  // Tier distribution (for dynamic export presets)
+  const tierRows = await query<{ icp_tier: string; cnt: number }>(
+    `SELECT icp_tier, COUNT(*) as cnt FROM ${enrichedView} WHERE icp_tier IS NOT NULL GROUP BY icp_tier ORDER BY cnt DESC`,
+  );
+  const tiers = tierRows.map((r) => ({ tier: r.icp_tier, count: Number(r.cnt) }));
+
+  return NextResponse.json({ funnel, enrichment, tiers });
 }

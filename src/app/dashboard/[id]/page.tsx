@@ -69,11 +69,15 @@ function DashboardContent() {
   const [showMoreInsights, setShowMoreInsights] = useState(false);
   // Lead Gen Mode — initialize from saved config
   const [leadGenMode, setLeadGenMode] = useState(false);
-  const [leadGenDismissed, setLeadGenDismissed] = useState(false);
+  const [leadGenDismissed, setLeadGenDismissed] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return localStorage.getItem(`glyte-leadgen-dismissed-${id}`) === "1";
+  });
   const [classifying, setClassifying] = useState(false);
   const [classifyProgress, setClassifyProgress] = useState(0);
   const [funnelData, setFunnelData] = useState<FunnelStage[]>([]);
   const [enrichmentData, setEnrichmentData] = useState<EnrichmentStatus[]>([]);
+  const [tierData, setTierData] = useState<{ tier: string; count: number }[]>([]);
   const [contactDetection, setContactDetection] = useState<{ confidence: number; titleColumn?: string } | null>(null);
 
   const starterQuestions = useMemo(
@@ -246,6 +250,7 @@ function DashboardContent() {
       .then((stats) => {
         if (stats.funnel) setFunnelData(stats.funnel);
         if (stats.enrichment) setEnrichmentData(stats.enrichment);
+        if (stats.tiers) setTierData(stats.tiers);
       })
       .catch((e) => console.error("Failed to fetch lead-gen stats:", e));
   }, [leadGenMode, data?.config.tableName]);
@@ -253,7 +258,8 @@ function DashboardContent() {
   const handleDismissLeadGen = useCallback(() => {
     setLeadGenDismissed(true);
     setContactDetection(null);
-  }, []);
+    localStorage.setItem(`glyte-leadgen-dismissed-${id}`, "1");
+  }, [id]);
 
   const handleDelete = useCallback(async () => {
     setDeleting(true);
@@ -654,7 +660,7 @@ function DashboardContent() {
 
         {leadGenMode && enrichmentData.length > 0 && (
           <div className="mb-6">
-            <h3 className="text-sm font-medium text-gray-300 mb-3">Enrichment Status</h3>
+            <h3 className="text-sm font-medium text-gray-300 mb-3">Data Health</h3>
             <EnrichmentBoard
               statuses={enrichmentData}
               total={enrichmentData.reduce((sum, s) => sum + s.count, 0)}
@@ -664,7 +670,7 @@ function DashboardContent() {
         )}
 
         {leadGenMode && (
-          <ExportPanel tableName={`${config.tableName}_enriched`} />
+          <ExportPanel tableName={`${config.tableName}_enriched`} tiers={tierData} />
         )}
 
         {/* Chart Grid */}
