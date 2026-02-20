@@ -42,8 +42,9 @@ async function getInstance(): Promise<DuckDBInstance> {
 // Connection pool — reuse connections instead of create/destroy per query
 async function acquireConnection(): Promise<DuckDBConnection> {
   const db = await getInstance();
-  const pool = globalState.__glyte_pool!;
-  return pool.pop() || db.connect();
+  if (!globalState.__glyte_pool) globalState.__glyte_pool = [];
+  const conn = globalState.__glyte_pool.pop();
+  return conn || db.connect();
 }
 
 function releaseConnection(conn: DuckDBConnection, discard = false): void {

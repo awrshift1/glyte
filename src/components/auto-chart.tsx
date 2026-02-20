@@ -185,7 +185,7 @@ function BarChartWidget({ chartId, data, xColumn, yColumns, groupBy }: { chartId
 
 function HorizontalBarWidget({ chartId, data, xColumn, yColumns }: { chartId: string; data: Record<string, unknown>[]; xColumn: string; yColumns: string[] }) {
   const { addFilter } = useFilterStore();
-  const barHeight = Math.min(280, Math.max(100, data.length * 40 + 40));
+  const barHeight = Math.max(100, data.length * 32 + 40);
 
   return (
     <ResponsiveContainer width="100%" height={barHeight}>
