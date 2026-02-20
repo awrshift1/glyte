@@ -39,6 +39,9 @@ export interface DashboardConfig {
   tables?: TableEntry[];
   relationships?: Relationship[];
   templateId?: string;
+  leadGenMode?: boolean;
+  classificationVersion?: string;
+  appendedSources?: AppendedSource[];
 }
 
 export interface TableEntry {
@@ -48,6 +51,13 @@ export interface TableEntry {
   columnCount: number;
   addedAt: string;
   excludedColumns?: string[];
+}
+
+export interface AppendedSource {
+  label: string;
+  csvPath: string;
+  rowCount: number;
+  appendedAt: string;
 }
 
 export interface Relationship {
@@ -92,7 +102,15 @@ export interface KpiData {
   width: number;
 }
 
-export type GlassBoxDecisionType = "chart" | "template";
+export interface SchemaCompatibility {
+  compatible: boolean;
+  overlapPercent: number;
+  commonColumns: string[];
+  missingInTarget: string[];
+  extraInSource: string[];
+}
+
+export type GlassBoxDecisionType = "chart" | "template" | "relationship";
 export type GlassBoxDecisionStatus = "pending" | "accepted" | "rejected";
 
 export interface GlassBoxDecision {
@@ -121,5 +139,18 @@ export interface GlassBoxDecision {
     // Template details
     templateId?: string;
     templateName?: string;
+  };
+}
+
+export interface ClassificationProgress {
+  type: 'progress' | 'complete';
+  processed?: number;
+  total?: number;
+  tierCounts?: Record<string, number>;
+  summary?: {
+    total: number;
+    icp: number;
+    rejected: number;
+    byTier: Record<string, number>;
   };
 }

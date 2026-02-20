@@ -53,7 +53,7 @@ SQL RULES:
 - NEVER silently drop a filter. If a filter column doesn't exist, use type "answer".
 - No markdown code fences, no semicolons, no trailing text.
 
-${exampleLines}`;
+${exampleLines}${config.leadGenMode ? buildLeadGenContext(profile.tableName, config.classificationVersion ?? "1.0") : ""}`;
 }
 
 function describeColumn(col: ColumnProfile): string {
@@ -177,7 +177,42 @@ RESPONSE FORMAT:
 - Use plain text with line breaks. You may use **bold** for emphasis.
 - Focus on the INSIGHT (what the data means), not repeating raw numbers.
 - Example good response: "Tier 1 dominates the contact base at 88%, with 5,593 contacts. The remaining tiers combined account for only 12%, suggesting a strong focus on high-priority accounts."
-- Example bad response: "| Tier | Count | ... |" (don't repeat the data as a table)`;
+- Example bad response: "| Tier | Count | ... |" (don't repeat the data as a table)${config.leadGenMode ? buildLeadGenContext(profile.tableName, config.classificationVersion ?? "1.0") : ""}`;
+}
+
+/**
+ * Build additional context for lead-gen mode.
+ * Appended to system prompt when ICP classification is present.
+ */
+export function buildLeadGenContext(tableName: string, version: string): string {
+  return `
+LEAD GEN MODE ACTIVE (ICP Classification ${version}):
+This dataset contains classified contacts with ICP tiers.
+
+Available tiers:
+- Tier 1: Decision Makers (CEO, CFO, COO, CRO, MD, President, Founder, Owner)
+- Tier 1.5: Payment & Finance Owners (Head of Payments, Finance Director, Treasury)
+- Tier 2: Influencers/Scouts (Operations Director, BD Director, Regional Director, generic Director/Head)
+- Tier 3: VP/EVP/Deputy (VP, SVP, EVP, Deputy roles)
+- iGaming: Casino/Betting Directors (context-dependent)
+- Board: Low priority (Chairman, Board Member)
+
+IMPORTANT: Use the "${tableName}_enriched" view instead of "${tableName}" for ICP-aware queries.
+The enriched view includes an "icp_tier" column.
+
+Example queries:
+Q: How many ICP contacts?
+SQL: SELECT COUNT(*) as icp_contacts FROM "${tableName}_enriched" WHERE icp_tier IS NOT NULL
+
+Q: Tier breakdown
+SQL: SELECT icp_tier, COUNT(*) as count FROM "${tableName}_enriched" WHERE icp_tier IS NOT NULL GROUP BY icp_tier ORDER BY count DESC
+
+Q: ICP contacts with email
+SQL: SELECT COUNT(*) as ready_for_outreach FROM "${tableName}_enriched" WHERE icp_tier IS NOT NULL AND email IS NOT NULL AND email != ''
+
+Q: Top companies by Tier 1
+SQL: SELECT "companyName", COUNT(*) as count FROM "${tableName}_enriched" WHERE icp_tier = 'Tier 1' GROUP BY "companyName" ORDER BY count DESC LIMIT 10
+`;
 }
 
 export function generateStarterQuestions(profile: TableProfile): string[] {

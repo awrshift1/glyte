@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { writeFile, mkdir, readFile } from "fs/promises";
 import path from "path";
-import { ingestCsv, dropTable } from "@/lib/duckdb";
+import { ingestCsv, dropTable, schemaCompatibility } from "@/lib/duckdb";
 import { sanitizeDashboardId, safeUploadFilename } from "@/lib/dashboard-loader";
 import type { DashboardConfig, TableEntry } from "@/types/dashboard";
 
@@ -17,25 +17,51 @@ export async function POST(
     const configPath = path.join(DASHBOARDS_DIR, `${safeId}.json`);
     const config: DashboardConfig = JSON.parse(await readFile(configPath, "utf-8"));
 
-    const formData = await request.formData();
-    const file = formData.get("file") as File | null;
-    if (!file) {
-      return NextResponse.json({ error: "No file provided" }, { status: 400 });
+    const contentType = request.headers.get("content-type") ?? "";
+
+    let filePath: string;
+    let tableName: string;
+
+    if (contentType.includes("application/json")) {
+      // Re-ingest from existing CSV path
+      const body = await request.json();
+      const csvPath = body.csvPath as string | undefined;
+      if (!csvPath) {
+        return NextResponse.json({ error: "csvPath required" }, { status: 400 });
+      }
+      filePath = csvPath;
+      tableName = path.basename(csvPath)
+        .replace(/\.(csv|tsv|xlsx?)$/i, "")
+        .replace(/[^a-zA-Z0-9_]/g, "_")
+        .toLowerCase();
+      // Deduplicate table name if it already exists in this dashboard
+      const existingNames = new Set([config.tableName, ...(config.tables ?? []).map((t) => t.tableName)]);
+      let deduped = tableName;
+      let suffix = 2;
+      while (existingNames.has(deduped)) {
+        deduped = `${tableName}_${suffix++}`;
+      }
+      tableName = deduped;
+    } else {
+      // File upload flow
+      const formData = await request.formData();
+      const file = formData.get("file") as File | null;
+      if (!file) {
+        return NextResponse.json({ error: "No file provided" }, { status: 400 });
+      }
+
+      const uploadDir = path.join(process.cwd(), "data", "uploads");
+      await mkdir(uploadDir, { recursive: true });
+      const safeFilename = safeUploadFilename(file.name);
+      filePath = path.join(uploadDir, safeFilename);
+      const bytes = await file.arrayBuffer();
+      await writeFile(filePath, Buffer.from(bytes));
+
+      tableName = file.name
+        .replace(/\.(csv|tsv|xlsx?)$/i, "")
+        .replace(/[^a-zA-Z0-9_]/g, "_")
+        .toLowerCase();
     }
-
-    // Save file
-    const uploadDir = path.join(process.cwd(), "data", "uploads");
-    await mkdir(uploadDir, { recursive: true });
-    const safeFilename = safeUploadFilename(file.name);
-    const filePath = path.join(uploadDir, safeFilename);
-    const bytes = await file.arrayBuffer();
-    await writeFile(filePath, Buffer.from(bytes));
-
-    // Derive table name
-    const tableName = file.name
-      .replace(/\.(csv|tsv|xlsx?)$/i, "")
-      .replace(/[^a-zA-Z0-9_]/g, "_")
-      .toLowerCase();
 
     // Ingest
     const { rows, columns } = await ingestCsv(filePath, tableName);
@@ -55,10 +81,14 @@ export async function POST(
 
     await writeFile(configPath, JSON.stringify(config, null, 2));
 
+    // Check schema compatibility with primary table for append option
+    const schemaMatch = await schemaCompatibility(tableName, config.tableName);
+
     return NextResponse.json({
       table: tableEntry,
       columns,
       totalTables: config.tables.length,
+      schemaMatch,
     });
   } catch (error) {
     return NextResponse.json({ error: String(error) }, { status: 500 });

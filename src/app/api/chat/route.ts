@@ -78,7 +78,13 @@ export async function POST(request: Request) {
     const allowedTables = new Set([
       config.tableName.toLowerCase(),
       ...(config.tables ?? []).map((t) => t.tableName.toLowerCase()),
+      ...(config.leadGenMode ? [`${config.tableName}_enriched`.toLowerCase()] : []),
     ]);
+
+    // Allow enriched view when Lead Gen Mode is active
+    if (config.leadGenMode) {
+      allowedTables.add(`${config.tableName}_enriched`.toLowerCase());
+    }
 
     // Build conversation history
     const recentHistory = history.slice(-3);

@@ -3,6 +3,7 @@ import path from "path";
 import fs from "fs";
 import { runMigrations } from "./migrations";
 import { quoteIdent, quoteLiteral, safeCsvPath } from "./sql-utils";
+import type { SchemaCompatibility } from "@/types/dashboard";
 
 const DB_PATH = path.join(process.cwd(), "data", "glyte.duckdb");
 
@@ -148,4 +149,87 @@ export async function getTables(): Promise<string[]> {
     "SELECT table_name FROM information_schema.tables WHERE table_schema = 'main' AND table_name NOT LIKE '_glyte_%'"
   );
   return rows.map((r) => r.table_name);
+}
+
+export type { SchemaCompatibility };
+
+export async function schemaCompatibility(
+  sourceTable: string,
+  targetTable: string
+): Promise<SchemaCompatibility> {
+  const srcCols = await query<{ column_name: string }>(
+    `SELECT column_name FROM information_schema.columns WHERE table_schema = 'main' AND table_name = ${quoteLiteral(sourceTable)} ORDER BY ordinal_position`
+  );
+  const tgtCols = await query<{ column_name: string }>(
+    `SELECT column_name FROM information_schema.columns WHERE table_schema = 'main' AND table_name = ${quoteLiteral(targetTable)} ORDER BY ordinal_position`
+  );
+
+  const srcNames = srcCols.map((r) => r.column_name);
+  const tgtNames = new Set(tgtCols.map((r) => r.column_name));
+
+  const commonColumns = srcNames.filter((c) => tgtNames.has(c));
+  const missingInTarget = srcNames.filter((c) => !tgtNames.has(c));
+  const extraInSource = [...tgtNames].filter((c) => !srcNames.includes(c));
+  const overlapPercent = srcNames.length > 0 ? Math.round((commonColumns.length / srcNames.length) * 100) : 0;
+
+  return {
+    compatible: overlapPercent >= 50,
+    overlapPercent,
+    commonColumns,
+    missingInTarget,
+    extraInSource,
+  };
+}
+
+export async function appendCsv(
+  targetTable: string,
+  sourceTable: string,
+  sourceLabel: string
+): Promise<{ newRows: number; totalRows: number }> {
+  const db = await getInstance();
+  const conn = await db.connect();
+  try {
+    const safeTarget = quoteIdent(targetTable);
+
+    // Ensure _source column exists on target
+    const cols = await query<{ column_name: string }>(
+      `SELECT column_name FROM information_schema.columns WHERE table_schema = 'main' AND table_name = ${quoteLiteral(targetTable)} AND column_name = '_source'`
+    );
+    if (cols.length === 0) {
+      await conn.run(`ALTER TABLE ${safeTarget} ADD COLUMN "_source" VARCHAR`);
+    }
+
+    // Add any source columns missing in target
+    const compat = await schemaCompatibility(sourceTable, targetTable);
+    for (const col of compat.missingInTarget) {
+      if (col === "_source") continue;
+      await conn.run(`ALTER TABLE ${safeTarget} ADD COLUMN ${quoteIdent(col)} VARCHAR`);
+    }
+
+    // Count source rows before insert
+    const countBefore = await conn.run(`SELECT COUNT(*) as cnt FROM ${quoteIdent(sourceTable)}`);
+    const newRows = Number((await countBefore.getRows())[0][0]);
+
+    // INSERT BY NAME with _source label
+    await conn.run(
+      `INSERT INTO ${safeTarget} BY NAME (SELECT *, ${quoteLiteral(sourceLabel)} as "_source" FROM ${quoteIdent(sourceTable)})`
+    );
+
+    // Get total rows after insert
+    const countAfter = await conn.run(`SELECT COUNT(*) as cnt FROM ${safeTarget}`);
+    const totalRows = Number((await countAfter.getRows())[0][0]);
+
+    return { newRows, totalRows };
+  } finally {
+    conn.closeSync();
+  }
+}
+
+export async function backfillSource(
+  tableName: string,
+  label: string
+): Promise<void> {
+  await query(
+    `UPDATE ${quoteIdent(tableName)} SET "_source" = ${quoteLiteral(label)} WHERE "_source" IS NULL`
+  );
 }

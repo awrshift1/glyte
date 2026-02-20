@@ -49,6 +49,36 @@ const migrations: Migration[] = [
       `UPDATE _glyte_meta SET value = '3' WHERE key = 'schema_version'`,
     ],
   },
+  {
+    version: 4,
+    sql: [
+      `CREATE TABLE IF NOT EXISTS _glyte_icp_results (
+        id INTEGER PRIMARY KEY,
+        table_name VARCHAR NOT NULL,
+        row_number INTEGER NOT NULL,
+        icp_tier VARCHAR,
+        classifier_version VARCHAR,
+        classified_at TIMESTAMP DEFAULT current_timestamp,
+        UNIQUE(table_name, row_number, classifier_version)
+      )`,
+      `UPDATE _glyte_meta SET value = '4' WHERE key = 'schema_version'`,
+    ],
+  },
+  {
+    version: 5,
+    sql: [
+      `DROP TABLE IF EXISTS _glyte_icp_results`,
+      `CREATE TABLE _glyte_icp_results (
+        table_name VARCHAR NOT NULL,
+        row_number INTEGER NOT NULL,
+        icp_tier VARCHAR,
+        classifier_version VARCHAR,
+        classified_at TIMESTAMP DEFAULT current_timestamp,
+        PRIMARY KEY(table_name, row_number, classifier_version)
+      )`,
+      `UPDATE _glyte_meta SET value = '5' WHERE key = 'schema_version'`,
+    ],
+  },
 ];
 
 export async function runMigrations(db: DuckDBInstance): Promise<void> {

@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { query, dropTable } from "@/lib/duckdb";
 import { loadDashboard, buildSafeWhereClause, sanitizeDashboardId } from "@/lib/dashboard-loader";
-import { unlink } from "fs/promises";
+import { readFile, writeFile, unlink } from "fs/promises";
 import path from "path";
-import type { ChartData, KpiData } from "@/types/dashboard";
+import type { ChartData, KpiData, DashboardConfig } from "@/types/dashboard";
 
 export async function GET(
   request: NextRequest,
@@ -92,6 +92,43 @@ export async function DELETE(
     await unlink(configPath).catch(() => {});
 
     return NextResponse.json({ deleted: true, id: safeId });
+  } catch (error) {
+    return NextResponse.json({ error: String(error) }, { status: 500 });
+  }
+}
+
+const ALLOWED_PATCH_KEYS = new Set<keyof DashboardConfig>([
+  "leadGenMode",
+  "classificationVersion",
+  "excludedColumns",
+  "title",
+]);
+
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params;
+    const safeId = sanitizeDashboardId(id);
+    const configPath = path.join(process.cwd(), "data", "dashboards", `${safeId}.json`);
+    const raw = await readFile(configPath, "utf-8");
+    const config: DashboardConfig = JSON.parse(raw);
+
+    const updates = await request.json();
+    for (const key of Object.keys(updates)) {
+      if (!ALLOWED_PATCH_KEYS.has(key as keyof DashboardConfig)) {
+        return NextResponse.json(
+          { error: `Field "${key}" cannot be updated via PATCH` },
+          { status: 400 },
+        );
+      }
+    }
+
+    Object.assign(config, updates, { updatedAt: new Date().toISOString() });
+    await writeFile(configPath, JSON.stringify(config, null, 2));
+
+    return NextResponse.json({ ok: true, config });
   } catch (error) {
     return NextResponse.json({ error: String(error) }, { status: 500 });
   }

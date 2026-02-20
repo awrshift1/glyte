@@ -9,6 +9,7 @@ const SEGMENT_COLS = /^(tier|icp.?tier|segment|category|grade|type|group|region|
 // Columns that are identifiers — not useful for charts
 const IDENTIFIER_PATTERN = /^(id|uuid|_id|key)$/i;
 const URL_PATTERN = /url|link|linkedin|website|href/i;
+const FREETEXT_PATTERN = /^(description|bio|summary|notes?|comment|about|message|body|text)$/i;
 
 function formatTitle(name: string): string {
   return name.replace(/_/g, " ").replace(/([a-z])([A-Z])/g, "$1 $2").replace(/\b\w/g, (c) => c.toUpperCase());
@@ -17,8 +18,13 @@ function formatTitle(name: string): string {
 function isIdentifier(col: ColumnProfile, rowCount: number): boolean {
   if (IDENTIFIER_PATTERN.test(col.name)) return true;
   if (URL_PATTERN.test(col.name)) return true;
+  if (CONTACT_COLS.test(col.name)) return true; // Contact fields (email, name, phone) are identity, not analytical
+  if (FREETEXT_PATTERN.test(col.name)) return true; // Free-text fields are not analytical dimensions
   // Very high cardinality (>80% unique) = likely identifier
   if (col.distinctCount > rowCount * 0.8) return true;
+  // Sparse column: very few non-null values relative to rows — not useful for distribution
+  const nonNull = col.totalCount - col.nullCount;
+  if (nonNull > 0 && nonNull < rowCount * 0.1 && col.distinctCount <= nonNull) return true;
   return false;
 }
 
@@ -31,7 +37,11 @@ export const matchContactPipeline: DashboardTemplate = {
     const hasContact = profile.columns.some((c) => CONTACT_COLS.test(c.name));
     const hasStatus = profile.columns.some((c) => STATUS_COLS.test(c.name));
     const hasSegment = profile.columns.some((c) => SEGMENT_COLS.test(c.name));
+    const hasIcpTier = profile.columns.some((c) => /^icp.?tier$/i.test(c.name));
 
+    if (hasContact && hasIcpTier) {
+      return { score: 0.95, confidence: 0.95, reason: "Contact list with ICP classification detected" };
+    }
     if (hasContact && hasStatus) {
       return { score: 0.85, confidence: 0.85, reason: "Contact + status/stage column detected" };
     }
@@ -102,29 +112,34 @@ export const matchContactPipeline: DashboardTemplate = {
       });
     }
 
-    // KPI: Segment count or coverage KPI
+    // KPI: Segment count or coverage KPI (only if 2+ distinct values)
     const primarySegment = segmentCol || statusCol;
-    if (primarySegment) {
+    if (primarySegment && primarySegment.distinctCount >= 2) {
       charts.push({
         id: nextId(), type: "kpi", title: `${formatTitle(primarySegment.name)} Groups`,
         query: `SELECT COUNT(DISTINCT "${primarySegment.name}") as value FROM "${table}" WHERE "${primarySegment.name}" IS NOT NULL`,
         width: 3, confidence: 0.75, reason: `Number of distinct ${formatTitle(primarySegment.name)} values`,
       });
     } else if (coverageCols.length > 0) {
-      // Coverage KPI for a field with nulls — show count, not %
-      const covCol = coverageCols[0];
-      charts.push({
-        id: nextId(), type: "kpi", title: `With ${formatTitle(covCol.name)}`,
-        query: `SELECT COUNT("${covCol.name}") as value FROM "${table}" WHERE "${covCol.name}" IS NOT NULL AND "${covCol.name}" != ''`,
-        width: 3, confidence: 0.7,
-        reason: `${covCol.nullCount} missing out of ${profile.rowCount} (${Math.round((1 - covCol.nullCount / profile.rowCount) * 100)}% coverage)`,
-      });
+      // Coverage KPI for a field with nulls — skip if already shown as email KPI
+      const covCol = coverageCols.find((c) => !(emailCol && c.name === emailCol.name));
+      if (covCol) {
+        charts.push({
+          id: nextId(), type: "kpi", title: `With ${formatTitle(covCol.name)}`,
+          query: `SELECT COUNT("${covCol.name}") as value FROM "${table}" WHERE "${covCol.name}" IS NOT NULL AND "${covCol.name}" != ''`,
+          width: 3, confidence: 0.7,
+          reason: `${covCol.nullCount} missing out of ${profile.rowCount} (${Math.round((1 - covCol.nullCount / profile.rowCount) * 100)}% coverage)`,
+        });
+      }
     }
 
     // === SEGMENT / STATUS BREAKDOWNS ===
 
     // Primary segment bar + donut (status or segment like icpTier)
-    const breakdownCol = statusCol || segmentCol || lowCard[0];
+    // Skip columns with only 1 unique value — no analytical value
+    const breakdownCol = [statusCol, segmentCol, ...lowCard].find(
+      (c) => c && c.distinctCount >= 2
+    );
     if (breakdownCol) {
       charts.push({
         id: nextId(), type: "horizontal-bar",
@@ -135,18 +150,21 @@ export const matchContactPipeline: DashboardTemplate = {
         reason: `Distribution across ${breakdownCol.distinctCount} ${formatTitle(breakdownCol.name)} values`,
       });
 
-      charts.push({
-        id: nextId(), type: "donut",
-        title: `Distribution by ${formatTitle(breakdownCol.name)}`,
-        query: `SELECT "${breakdownCol.name}", COUNT(*) as "Count" FROM "${table}" WHERE "${breakdownCol.name}" IS NOT NULL GROUP BY "${breakdownCol.name}" ORDER BY "Count" DESC`,
-        xColumn: breakdownCol.name, yColumns: ["Count"],
-        width: 6, confidence: 0.85,
-        reason: `Proportional view of ${formatTitle(breakdownCol.name)}`,
-      });
+      // Only add donut if 3+ categories — donut with 1-2 slices is not useful
+      if (breakdownCol.distinctCount >= 3 && breakdownCol.distinctCount <= 8) {
+        charts.push({
+          id: nextId(), type: "donut",
+          title: `Distribution by ${formatTitle(breakdownCol.name)}`,
+          query: `SELECT "${breakdownCol.name}", COUNT(*) as "Count" FROM "${table}" WHERE "${breakdownCol.name}" IS NOT NULL GROUP BY "${breakdownCol.name}" ORDER BY "Count" DESC`,
+          xColumn: breakdownCol.name, yColumns: ["Count"],
+          width: 6, confidence: 0.85,
+          reason: `Proportional view of ${formatTitle(breakdownCol.name)}`,
+        });
+      }
     }
 
-    // Second low-cardinality categorical (if different from breakdownCol)
-    const secondLowCard = lowCard.find((c) => c.name !== breakdownCol?.name);
+    // Second low-cardinality categorical (if different from breakdownCol, 2+ values)
+    const secondLowCard = lowCard.find((c) => c.name !== breakdownCol?.name && c.distinctCount >= 2);
     if (secondLowCard) {
       charts.push({
         id: nextId(), type: "horizontal-bar",
@@ -158,9 +176,67 @@ export const matchContactPipeline: DashboardTemplate = {
       });
     }
 
+    // === ICP-AWARE CHARTS (if icp_tier column exists) ===
+
+    const icpTierCol = profile.columns.find((c) => /^icp.?tier$/i.test(c.name));
+    if (icpTierCol) {
+      // ICP KPI: Total ICP contacts
+      charts.push({
+        id: nextId(), type: "kpi", title: "ICP Contacts",
+        query: `SELECT COUNT(*) as value FROM "${table}" WHERE "${icpTierCol.name}" IS NOT NULL`,
+        width: 3, confidence: 0.95,
+        reason: "Total contacts with ICP classification",
+      });
+
+      // ICP Hit Rate KPI
+      charts.push({
+        id: nextId(), type: "kpi", title: "ICP Hit Rate",
+        query: `SELECT ROUND(COUNT(CASE WHEN "${icpTierCol.name}" IS NOT NULL THEN 1 END) * 100.0 / COUNT(*), 1) as value FROM "${table}"`,
+        width: 3, confidence: 0.9,
+        reason: "Percentage of contacts classified as ICP",
+      });
+
+      // ICP Tier breakdown — only if not already generated as breakdownCol above
+      if (breakdownCol?.name !== icpTierCol.name) {
+        charts.push({
+          id: nextId(), type: "horizontal-bar",
+          title: "Contacts by ICP Tier",
+          query: `SELECT "${icpTierCol.name}", COUNT(*) as "Count" FROM "${table}" WHERE "${icpTierCol.name}" IS NOT NULL GROUP BY "${icpTierCol.name}" ORDER BY "Count" DESC`,
+          xColumn: icpTierCol.name, yColumns: ["Count"],
+          width: 6, confidence: 0.9,
+          reason: "ICP tier distribution — purpose-built for classified contacts",
+        });
+
+        charts.push({
+          id: nextId(), type: "donut",
+          title: "ICP Tier Distribution",
+          query: `SELECT "${icpTierCol.name}", COUNT(*) as "Count" FROM "${table}" WHERE "${icpTierCol.name}" IS NOT NULL GROUP BY "${icpTierCol.name}" ORDER BY "Count" DESC`,
+          xColumn: icpTierCol.name, yColumns: ["Count"],
+          width: 6, confidence: 0.9,
+          reason: "Proportional ICP tier view",
+        });
+      }
+
+      // Top Companies by ICP Tier (cross-tab)
+      if (companyCol) {
+        charts.push({
+          id: nextId(), type: "bar",
+          title: "Top Companies by ICP Tier",
+          query: `SELECT "${companyCol.name}", "${icpTierCol.name}", COUNT(*) as "Count" FROM "${table}" WHERE "${companyCol.name}" IS NOT NULL AND "${companyCol.name}" != '' AND "${icpTierCol.name}" IS NOT NULL GROUP BY "${companyCol.name}", "${icpTierCol.name}" ORDER BY "Count" DESC LIMIT 20`,
+          xColumn: companyCol.name, yColumns: ["Count"], groupBy: icpTierCol.name,
+          width: 12, confidence: 0.9,
+          reason: "Cross-tabulation of companies by ICP classification",
+        });
+      }
+    }
+
     // === HIGH-CARDINALITY TOP N ===
 
     for (const cat of highCard.slice(0, 2)) {
+      // Skip if too few non-null values — Top 10 of 3 items is not useful
+      const nonNullCount = cat.totalCount - cat.nullCount;
+      if (nonNullCount < 10) continue;
+
       charts.push({
         id: nextId(), type: "horizontal-bar",
         title: `Top 10 ${formatTitle(cat.name)}`,

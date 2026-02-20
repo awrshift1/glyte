@@ -5,12 +5,15 @@ import Link from "next/link";
 import { Sidebar } from "@/components/sidebar";
 import { AiSidebar } from "@/components/ai-sidebar";
 import { AiPageContext } from "@/components/ai-page-context";
-import { BarChart3, Clock } from "lucide-react";
+import { DeleteConfirm } from "@/components/delete-confirm";
+import { BarChart3, Clock, Trash2 } from "lucide-react";
 import type { DashboardConfig } from "@/types/dashboard";
 
 export default function DashboardsPage() {
   const [dashboards, setDashboards] = useState<DashboardConfig[]>([]);
   const [loading, setLoading] = useState(true);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; title: string; chartCount: number } | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/dashboards")
@@ -18,6 +21,22 @@ export default function DashboardsPage() {
       .then((d) => setDashboards(d.dashboards || []))
       .finally(() => setLoading(false));
   }, []);
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    setDeletingId(deleteTarget.id);
+    try {
+      const res = await fetch(`/api/dashboard/${deleteTarget.id}`, { method: "DELETE" });
+      const d = await res.json();
+      if (d.error) throw new Error(d.error);
+      setDashboards((prev) => prev.filter((db) => db.id !== deleteTarget.id));
+      setDeleteTarget(null);
+    } catch (err) {
+      console.error("Delete failed:", err);
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   return (
     <div className="flex min-h-screen">
@@ -40,9 +59,20 @@ export default function DashboardsPage() {
               <Link
                 key={d.id}
                 href={`/dashboard/${d.id}`}
-                className="block bg-[#1e293b] border border-[#334155] rounded-lg p-5 hover:border-[#2563eb] transition-colors group"
+                className="relative block bg-[#1e293b] border border-[#334155] rounded-lg p-5 hover:border-[#2563eb] transition-colors group"
               >
-                <h3 className="text-white font-medium mb-2 group-hover:text-[#2563eb] transition-colors">{d.title}</h3>
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setDeleteTarget({ id: d.id, title: d.title, chartCount: d.charts.length });
+                  }}
+                  className="absolute top-3 right-3 flex items-center justify-center w-7 h-7 rounded-md bg-[#0f1729]/60 text-[#94a3b8] opacity-0 group-hover:opacity-100 hover:text-[#ef4444] hover:bg-[#ef4444]/10 transition-all"
+                  title="Delete dashboard"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+                <h3 className="text-white font-medium mb-2 group-hover:text-[#2563eb] transition-colors pr-8">{d.title}</h3>
                 <div className="flex items-center gap-4 text-xs text-gray-400">
                   <span>{d.rowCount.toLocaleString()} rows</span>
                   <span>{d.columnCount} columns</span>
@@ -58,6 +88,16 @@ export default function DashboardsPage() {
         )}
       </main>
       <AiSidebar />
+
+      {deleteTarget && (
+        <DeleteConfirm
+          dashboardTitle={deleteTarget.title}
+          chartCount={deleteTarget.chartCount}
+          onConfirm={handleDelete}
+          onCancel={() => setDeleteTarget(null)}
+          loading={deletingId === deleteTarget.id}
+        />
+      )}
     </div>
   );
 }

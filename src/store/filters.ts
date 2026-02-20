@@ -24,14 +24,15 @@ export function useFilterStore() {
 
   const updateUrl = useCallback(
     (newFilters: Filter[]) => {
-      const params = new URLSearchParams();
+      const params = new URLSearchParams(searchParams.toString());
+      params.delete("filter");
       for (const f of newFilters) {
         params.append("filter", `${f.column}:${f.value}`);
       }
       const qs = params.toString();
       router.replace(`${pathname}${qs ? "?" + qs : ""}`, { scroll: false });
     },
-    [router, pathname]
+    [router, pathname, searchParams]
   );
 
   const addFilter = useCallback(

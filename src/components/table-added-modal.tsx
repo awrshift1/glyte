@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, X } from "lucide-react";
+import { Plus, X, Layers } from "lucide-react";
 import type { SuggestedRelationship } from "@/lib/relationship-detector";
+import type { SchemaCompatibility } from "@/types/dashboard";
 
 export interface SuggestionWithId extends SuggestedRelationship {
   relationshipId?: string;
@@ -17,6 +18,9 @@ interface TableAddedModalProps {
   suggestions: SuggestionWithId[];
   onDone: (excludedColumns: string[], acceptedRelationshipIds: string[]) => void;
   onClose: () => void;
+  schemaMatch?: SchemaCompatibility;
+  primaryTableName?: string;
+  onAppend?: () => void;
 }
 
 export function TableAddedModal({
@@ -27,6 +31,9 @@ export function TableAddedModal({
   suggestions,
   onDone,
   onClose,
+  schemaMatch,
+  primaryTableName,
+  onAppend,
 }: TableAddedModalProps) {
   const [includedCols, setIncludedCols] = useState<Set<string>>(
     () => new Set(columns)
@@ -86,6 +93,37 @@ export function TableAddedModal({
 
         {/* Body */}
         <div className="px-6 py-5 space-y-5 overflow-y-auto flex-1 min-h-0">
+          {/* Append option */}
+          {schemaMatch?.compatible && primaryTableName && onAppend && (
+            <div className="bg-[#0f1729] border border-[#2563eb]/30 rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Layers className="h-4 w-4 text-[#2563eb]" />
+                <span className="text-sm font-medium text-[#cbd5e1]">
+                  {schemaMatch.overlapPercent}% columns match primary table
+                </span>
+              </div>
+              {schemaMatch.missingInTarget.length > 0 && (
+                <p className="text-[10px] text-[#64748b] mb-3">
+                  Missing: {schemaMatch.missingInTarget.join(", ")} (filled with NULL)
+                </p>
+              )}
+              <div className="flex gap-2">
+                <button
+                  onClick={onAppend}
+                  className="rounded-lg bg-[#2563eb] px-4 py-2 text-sm font-medium text-white hover:bg-[#1d4ed8] transition-colors"
+                >
+                  Append to &ldquo;{primaryTableName.length > 25 ? primaryTableName.slice(0, 25) + "..." : primaryTableName}&rdquo;
+                </button>
+                <button
+                  onClick={() => {/* just continue to columns below */}}
+                  className="rounded-lg border border-[#334155] px-4 py-2 text-sm font-medium text-[#94a3b8] hover:text-white hover:border-[#475569] transition-colors"
+                >
+                  Keep separate
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Columns */}
           <div>
             <h3 className="text-xs font-semibold text-[#94a3b8] uppercase tracking-wider mb-3">

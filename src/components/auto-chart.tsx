@@ -13,12 +13,28 @@ import {
   CartesianGrid,
   Tooltip,
   Legend,
+  LabelList,
   ResponsiveContainer,
 } from "recharts";
 import type { ChartData } from "@/types/dashboard";
 import { useFilterStore } from "@/store/filters";
 
 const COLORS = ["#2563eb", "#06b6d4", "#22c55e", "#eab308", "#f97316", "#a855f7", "#ef4444", "#ec4899"];
+
+// Stable color map for ICP tier values (design system)
+const TIER_COLORS: Record<string, string> = {
+  "Tier 1": "#3b82f6",
+  "Tier 1.5": "#06b6d4",
+  "Tier 2": "#22c55e",
+  "Tier 3": "#eab308",
+  "Board": "#a855f7",
+  "iGaming": "#f97316",
+};
+
+function resolveColor(value: unknown, index: number): string {
+  const color = TIER_COLORS[String(value)];
+  return color ?? COLORS[index % COLORS.length];
+}
 
 interface AutoChartProps {
   chart: ChartData;
@@ -144,7 +160,7 @@ function HorizontalBarWidget({ chartId, data, xColumn, yColumns }: { chartId: st
       <BarChart data={data} layout="vertical" barSize={24}>
         <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
         <XAxis type="number" stroke="#94a3b8" fontSize={12} />
-        <YAxis dataKey={xColumn} type="category" stroke="#94a3b8" fontSize={12} width={120} />
+        <YAxis dataKey={xColumn} type="category" stroke="#94a3b8" fontSize={11} width={130} tickFormatter={(v: string) => v && v.length > 20 ? v.slice(0, 20) + "…" : v} />
         <Tooltip wrapperStyle={{ pointerEvents: 'none' }} contentStyle={{ background: "#1e293b", border: "1px solid #334155", borderRadius: 8, color: "#f8fafc" }} labelStyle={{ color: "#cbd5e1" }} itemStyle={{ color: '#e2e8f0' }} cursor={{ fill: "rgba(148, 163, 184, 0.08)" }} />
         {yColumns.map((col) => (
           <Bar
@@ -158,9 +174,10 @@ function HorizontalBarWidget({ chartId, data, xColumn, yColumns }: { chartId: st
               if (p?.[xColumn]) addFilter({ column: xColumn, value: String(p[xColumn]), source: chartId });
             }}
           >
-            {data.map((_, i) => (
-              <Cell key={i} fill={COLORS[i % COLORS.length]} />
+            {data.map((row, i) => (
+              <Cell key={i} fill={resolveColor(row[xColumn], i)} />
             ))}
+            <LabelList dataKey={col} position="right" fill="#94a3b8" fontSize={11} formatter={(v) => { const n = Number(v); return n >= 1000 ? `${(n / 1000).toFixed(1)}K` : n; }} />
           </Bar>
         ))}
       </BarChart>
@@ -190,8 +207,8 @@ function DonutWidget({ chartId, data, xColumn, yColumns }: { chartId: string; da
           }}
           className="cursor-pointer"
         >
-          {data.map((_, i) => (
-            <Cell key={i} fill={COLORS[i % COLORS.length]} />
+          {data.map((row, i) => (
+            <Cell key={i} fill={resolveColor(row[xColumn], i)} />
           ))}
         </Pie>
         <Tooltip wrapperStyle={{ pointerEvents: 'none' }} contentStyle={{ background: "#1e293b", border: "1px solid #334155", borderRadius: 8, color: "#f8fafc" }} labelStyle={{ color: "#cbd5e1" }} itemStyle={{ color: '#e2e8f0' }} />
