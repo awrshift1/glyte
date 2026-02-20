@@ -31,9 +31,22 @@ const TIER_COLORS: Record<string, string> = {
   "iGaming": "#f97316",
 };
 
+const TOOLTIP_PROPS = {
+  wrapperStyle: { pointerEvents: "none" as const },
+  contentStyle: { background: "#1e293b", border: "1px solid #334155", borderRadius: 8, color: "#f8fafc" },
+  labelStyle: { color: "#cbd5e1" },
+  itemStyle: { color: "#e2e8f0" },
+};
+
+const LEGEND_LABEL = (value: string) => <span style={{ color: "#94a3b8" }}>{value}</span>;
+
 function resolveColor(value: unknown, index: number): string {
   const color = TIER_COLORS[String(value)];
   return color ?? COLORS[index % COLORS.length];
+}
+
+function truncate(v: string, max: number): string {
+  return v && v.length > max ? v.slice(0, max) + "…" : v;
 }
 
 interface AutoChartProps {
@@ -75,8 +88,8 @@ function LineChartWidget({ data, xColumn, yColumns }: { data: Record<string, unk
         <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
         <XAxis dataKey={xColumn} stroke="#94a3b8" fontSize={12} />
         <YAxis stroke="#94a3b8" fontSize={12} />
-        <Tooltip wrapperStyle={{ pointerEvents: 'none' }} contentStyle={{ background: "#1e293b", border: "1px solid #334155", borderRadius: 8, color: "#f8fafc" }} labelStyle={{ color: "#cbd5e1" }} itemStyle={{ color: '#e2e8f0' }} cursor={{ stroke: "rgba(148, 163, 184, 0.2)", strokeWidth: 1 }} />
-        <Legend formatter={(value: string) => <span style={{ color: '#94a3b8' }}>{value}</span>} />
+        <Tooltip {...TOOLTIP_PROPS} cursor={{ stroke: "rgba(148, 163, 184, 0.2)", strokeWidth: 1 }} />
+        <Legend formatter={LEGEND_LABEL} />
         {yColumns.map((col, i) => (
           <Line key={col} type="monotone" dataKey={col} stroke={COLORS[i]} strokeWidth={2} dot={false} />
         ))}
@@ -85,7 +98,7 @@ function LineChartWidget({ data, xColumn, yColumns }: { data: Record<string, unk
   );
 }
 
- 
+
 function getPayload(entry: any): Record<string, unknown> | null {
   if (!entry) return null;
   // Recharts Bar onClick passes the data entry directly
@@ -95,18 +108,28 @@ function getPayload(entry: any): Record<string, unknown> | null {
 
 function BarChartWidget({ chartId, data, xColumn, yColumns, groupBy }: { chartId: string; data: Record<string, unknown>[]; xColumn: string; yColumns: string[]; groupBy?: string }) {
   const { addFilter } = useFilterStore();
+  const rotated = (groupBy ? true : data.length > 8);
 
   if (groupBy) {
     const pivoted = pivotData(data, xColumn, groupBy, yColumns[0]);
     const groups = [...new Set(data.map((r) => String(r[groupBy])))];
     return (
-      <ResponsiveContainer width="100%" height={320}>
-        <BarChart data={pivoted} margin={{ bottom: 60 }}>
+      <ResponsiveContainer width="100%" height={360}>
+        <BarChart data={pivoted} margin={{ top: 8, bottom: 70 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-          <XAxis dataKey={xColumn} stroke="#94a3b8" fontSize={11} interval={0} angle={-40} textAnchor="end" tickFormatter={(v: string) => v && v.length > 18 ? v.slice(0, 18) + "…" : v} />
+          <XAxis
+            dataKey={xColumn}
+            stroke="#94a3b8"
+            fontSize={11}
+            interval={0}
+            angle={-35}
+            textAnchor="end"
+            tick={{ fill: "#e2e8f0", dy: 6 }}
+            tickFormatter={(v: string) => truncate(v, 18)}
+          />
           <YAxis stroke="#94a3b8" fontSize={12} />
-          <Tooltip wrapperStyle={{ pointerEvents: 'none' }} contentStyle={{ background: "#1e293b", border: "1px solid #334155", borderRadius: 8, color: "#f8fafc" }} labelStyle={{ color: "#cbd5e1" }} itemStyle={{ color: '#e2e8f0' }} cursor={{ fill: "rgba(148, 163, 184, 0.08)" }} />
-          <Legend formatter={(value: string) => <span style={{ color: '#94a3b8' }}>{value}</span>} />
+          <Tooltip {...TOOLTIP_PROPS} cursor={{ fill: "rgba(148, 163, 184, 0.08)" }} />
+          <Legend verticalAlign="top" align="right" wrapperStyle={{ paddingBottom: 8 }} formatter={LEGEND_LABEL} />
           {groups.map((g, i) => (
             <Bar
               key={g}
@@ -126,12 +149,21 @@ function BarChartWidget({ chartId, data, xColumn, yColumns, groupBy }: { chartId
   }
 
   return (
-    <ResponsiveContainer width="100%" height={data.length > 8 ? 320 : 280}>
-      <BarChart data={data} margin={data.length > 8 ? { bottom: 60 } : undefined}>
+    <ResponsiveContainer width="100%" height={rotated ? 360 : 280}>
+      <BarChart data={data} margin={rotated ? { top: 8, bottom: 70 } : undefined}>
         <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-        <XAxis dataKey={xColumn} stroke="#94a3b8" fontSize={data.length > 8 ? 11 : 12} interval={0} angle={data.length > 8 ? -40 : 0} textAnchor={data.length > 8 ? "end" : "middle"} tickFormatter={(v: string) => v && v.length > 18 ? v.slice(0, 18) + "…" : v} />
+        <XAxis
+          dataKey={xColumn}
+          stroke="#94a3b8"
+          fontSize={rotated ? 11 : 12}
+          interval={0}
+          angle={rotated ? -35 : 0}
+          textAnchor={rotated ? "end" : "middle"}
+          tick={rotated ? { fill: "#e2e8f0", dy: 6 } : undefined}
+          tickFormatter={(v: string) => truncate(v, 18)}
+        />
         <YAxis stroke="#94a3b8" fontSize={12} />
-        <Tooltip wrapperStyle={{ pointerEvents: 'none' }} contentStyle={{ background: "#1e293b", border: "1px solid #334155", borderRadius: 8, color: "#f8fafc" }} labelStyle={{ color: "#cbd5e1" }} itemStyle={{ color: '#e2e8f0' }} cursor={{ fill: "rgba(148, 163, 184, 0.08)" }} />
+        <Tooltip {...TOOLTIP_PROPS} cursor={{ fill: "rgba(148, 163, 184, 0.08)" }} />
         {yColumns.map((col, i) => (
           <Bar
             key={col}
@@ -160,8 +192,8 @@ function HorizontalBarWidget({ chartId, data, xColumn, yColumns }: { chartId: st
       <BarChart data={data} layout="vertical" barSize={24} margin={{ right: 45 }}>
         <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
         <XAxis type="number" stroke="#94a3b8" fontSize={12} />
-        <YAxis dataKey={xColumn} type="category" stroke="#94a3b8" fontSize={11} width={130} tickFormatter={(v: string) => v && v.length > 20 ? v.slice(0, 20) + "…" : v} />
-        <Tooltip wrapperStyle={{ pointerEvents: 'none' }} contentStyle={{ background: "#1e293b", border: "1px solid #334155", borderRadius: 8, color: "#f8fafc" }} labelStyle={{ color: "#cbd5e1" }} itemStyle={{ color: '#e2e8f0' }} cursor={{ fill: "rgba(148, 163, 184, 0.08)" }} />
+        <YAxis dataKey={xColumn} type="category" stroke="#94a3b8" fontSize={11} width={130} tickFormatter={(v: string) => truncate(v, 20)} />
+        <Tooltip {...TOOLTIP_PROPS} cursor={{ fill: "rgba(148, 163, 184, 0.08)" }} />
         {yColumns.map((col) => (
           <Bar
             key={col}
@@ -211,8 +243,8 @@ function DonutWidget({ chartId, data, xColumn, yColumns }: { chartId: string; da
             <Cell key={i} fill={resolveColor(row[xColumn], i)} />
           ))}
         </Pie>
-        <Tooltip wrapperStyle={{ pointerEvents: 'none' }} contentStyle={{ background: "#1e293b", border: "1px solid #334155", borderRadius: 8, color: "#f8fafc" }} labelStyle={{ color: "#cbd5e1" }} itemStyle={{ color: '#e2e8f0' }} />
-        <Legend formatter={(value: string) => <span style={{ color: '#94a3b8' }}>{value}</span>} />
+        <Tooltip {...TOOLTIP_PROPS} />
+        <Legend formatter={LEGEND_LABEL} />
       </PieChart>
     </ResponsiveContainer>
   );
