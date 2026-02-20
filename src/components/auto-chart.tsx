@@ -100,10 +100,10 @@ function BarChartWidget({ chartId, data, xColumn, yColumns, groupBy }: { chartId
     const pivoted = pivotData(data, xColumn, groupBy, yColumns[0]);
     const groups = [...new Set(data.map((r) => String(r[groupBy])))];
     return (
-      <ResponsiveContainer width="100%" height={280}>
-        <BarChart data={pivoted}>
+      <ResponsiveContainer width="100%" height={320}>
+        <BarChart data={pivoted} margin={{ bottom: 60 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-          <XAxis dataKey={xColumn} stroke="#94a3b8" fontSize={12} />
+          <XAxis dataKey={xColumn} stroke="#94a3b8" fontSize={11} interval={0} angle={-40} textAnchor="end" tickFormatter={(v: string) => v && v.length > 18 ? v.slice(0, 18) + "…" : v} />
           <YAxis stroke="#94a3b8" fontSize={12} />
           <Tooltip wrapperStyle={{ pointerEvents: 'none' }} contentStyle={{ background: "#1e293b", border: "1px solid #334155", borderRadius: 8, color: "#f8fafc" }} labelStyle={{ color: "#cbd5e1" }} itemStyle={{ color: '#e2e8f0' }} cursor={{ fill: "rgba(148, 163, 184, 0.08)" }} />
           <Legend formatter={(value: string) => <span style={{ color: '#94a3b8' }}>{value}</span>} />
@@ -126,10 +126,10 @@ function BarChartWidget({ chartId, data, xColumn, yColumns, groupBy }: { chartId
   }
 
   return (
-    <ResponsiveContainer width="100%" height={280}>
-      <BarChart data={data}>
+    <ResponsiveContainer width="100%" height={data.length > 8 ? 320 : 280}>
+      <BarChart data={data} margin={data.length > 8 ? { bottom: 60 } : undefined}>
         <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-        <XAxis dataKey={xColumn} stroke="#94a3b8" fontSize={12} />
+        <XAxis dataKey={xColumn} stroke="#94a3b8" fontSize={data.length > 8 ? 11 : 12} interval={0} angle={data.length > 8 ? -40 : 0} textAnchor={data.length > 8 ? "end" : "middle"} tickFormatter={(v: string) => v && v.length > 18 ? v.slice(0, 18) + "…" : v} />
         <YAxis stroke="#94a3b8" fontSize={12} />
         <Tooltip wrapperStyle={{ pointerEvents: 'none' }} contentStyle={{ background: "#1e293b", border: "1px solid #334155", borderRadius: 8, color: "#f8fafc" }} labelStyle={{ color: "#cbd5e1" }} itemStyle={{ color: '#e2e8f0' }} cursor={{ fill: "rgba(148, 163, 184, 0.08)" }} />
         {yColumns.map((col, i) => (
@@ -157,7 +157,7 @@ function HorizontalBarWidget({ chartId, data, xColumn, yColumns }: { chartId: st
 
   return (
     <ResponsiveContainer width="100%" height={barHeight}>
-      <BarChart data={data} layout="vertical" barSize={24}>
+      <BarChart data={data} layout="vertical" barSize={24} margin={{ right: 45 }}>
         <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
         <XAxis type="number" stroke="#94a3b8" fontSize={12} />
         <YAxis dataKey={xColumn} type="category" stroke="#94a3b8" fontSize={11} width={130} tickFormatter={(v: string) => v && v.length > 20 ? v.slice(0, 20) + "…" : v} />
