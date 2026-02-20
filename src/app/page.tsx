@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Sidebar } from "@/components/sidebar";
 import { DiffPreview } from "@/components/diff-preview";
+import { ColumnSelectModal } from "@/components/column-select-modal";
 import { AiSidebar } from "@/components/ai-sidebar";
 import { AiPageContext } from "@/components/ai-page-context";
 import { Upload, FileSpreadsheet, BarChart3, Filter, Share2, Clock } from "lucide-react";
@@ -16,10 +17,19 @@ interface DiffState {
   originalName: string;
 }
 
+interface ColumnSelectState {
+  dashboardId: string;
+  tableName: string;
+  columns: string[];
+  rowCount: number;
+}
+
 export default function Home() {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [diffState, setDiffState] = useState<DiffState | null>(null);
+  const [columnSelectState, setColumnSelectState] = useState<ColumnSelectState | null>(null);
+  const [savingColumns, setSavingColumns] = useState(false);
   const [recentDashboards, setRecentDashboards] = useState<DashboardConfig[]>([]);
   const router = useRouter();
 
@@ -59,6 +69,21 @@ export default function Home() {
         const res = await fetch("/api/upload", { method: "POST", body: formData });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error);
+
+        // Show column selection modal before redirecting
+        const columnNames = (data.profile?.columns ?? []).map(
+          (c: { name: string }) => c.name
+        );
+        if (columnNames.length > 0) {
+          setColumnSelectState({
+            dashboardId: data.dashboardId,
+            tableName: data.profile.tableName,
+            columns: columnNames,
+            rowCount: data.rowCount,
+          });
+          setUploading(false);
+          return;
+        }
         router.push(`/dashboard/${data.dashboardId}`);
       } catch (err) {
         setError(String(err));
@@ -133,6 +158,38 @@ export default function Home() {
       setUploading(false);
     }
   }, [router]);
+
+  const handleColumnsDone = useCallback(
+    async (excludedColumns: string[]) => {
+      if (!columnSelectState) return;
+      setSavingColumns(true);
+      try {
+        await fetch(`/api/dashboard/${columnSelectState.dashboardId}/tables`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            tableName: columnSelectState.tableName,
+            excludedColumns,
+          }),
+        });
+        setColumnSelectState(null);
+        router.push(`/dashboard/${columnSelectState.dashboardId}`);
+      } catch {
+        setColumnSelectState(null);
+        router.push(`/dashboard/${columnSelectState.dashboardId}`);
+      } finally {
+        setSavingColumns(false);
+      }
+    },
+    [columnSelectState, router]
+  );
+
+  const handleColumnsSkip = useCallback(() => {
+    if (!columnSelectState) return;
+    const id = columnSelectState.dashboardId;
+    setColumnSelectState(null);
+    router.push(`/dashboard/${id}`);
+  }, [columnSelectState, router]);
 
   return (
     <div className="flex min-h-screen">
@@ -275,6 +332,18 @@ export default function Home() {
           onNew={handleNewDashboard}
           onCancel={() => setDiffState(null)}
           loading={uploading}
+        />
+      )}
+
+      {/* Column Select Modal */}
+      {columnSelectState && (
+        <ColumnSelectModal
+          tableName={columnSelectState.tableName}
+          rowCount={columnSelectState.rowCount}
+          columns={columnSelectState.columns}
+          onDone={handleColumnsDone}
+          onSkip={handleColumnsSkip}
+          loading={savingColumns}
         />
       )}
     </div>
