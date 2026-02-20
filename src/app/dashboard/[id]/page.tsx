@@ -15,7 +15,6 @@ import { VersionHistory } from "@/components/version-history";
 import { TableAddedModal } from "@/components/table-added-modal";
 import { TableManager } from "@/components/table-manager";
 import type { SuggestionWithId } from "@/components/table-added-modal";
-import { GlassBoxPanel } from "@/components/glass-box/glass-box-panel";
 import { ExistingTablePicker } from "@/components/existing-table-picker";
 import { LeadGenToggle } from "@/components/lead-gen-toggle";
 import { FunnelChart } from "@/components/funnel-chart";
@@ -27,8 +26,8 @@ import { DimensionPills } from "@/components/dimension-pills";
 import { DimensionChart } from "@/components/dimension-chart";
 import { detectContactCsv } from "@/lib/contact-detector";
 import { generateStarterQuestions } from "@/lib/semantic-layer";
-import { Calendar, Download, Trash2, Clock, Plus, Database } from "lucide-react";
-import type { DashboardConfig, ChartData, KpiData, GlassBoxDecision, SchemaCompatibility } from "@/types/dashboard";
+import { Calendar, Download, Trash2, Clock, Plus, Database, X, ChevronDown, ChevronRight } from "lucide-react";
+import type { DashboardConfig, ChartData, KpiData, SchemaCompatibility } from "@/types/dashboard";
 interface DashboardResponse {
   config: DashboardConfig;
   charts: (ChartData | KpiData)[];
@@ -66,8 +65,8 @@ function DashboardContent() {
   const [addingTable, setAddingTable] = useState(false);
   const [showExistingPicker, setShowExistingPicker] = useState(false);
   const addTableRef = useRef<HTMLInputElement>(null);
-  const [glassBoxDecisions, setGlassBoxDecisions] = useState<GlassBoxDecision[]>([]);
-
+  const [hiddenChartIds, setHiddenChartIds] = useState<Set<string>>(new Set());
+  const [showMoreInsights, setShowMoreInsights] = useState(false);
   // Lead Gen Mode — initialize from saved config
   const [leadGenMode, setLeadGenMode] = useState(false);
   const [leadGenDismissed, setLeadGenDismissed] = useState(false);
@@ -124,69 +123,32 @@ function DashboardContent() {
     fetchDashboard();
   }, [fetchDashboard]);
 
-  // Generate Glass Box decisions from chart recommendations + relationships
+  // Initialize hidden chart IDs from saved config
   useEffect(() => {
-    if (!data?.config.profile || glassBoxDecisions.length > 0) return;
-    const chartDecisions: GlassBoxDecision[] = data.config.charts.map((chart) => ({
-      id: `gb-chart-${chart.id}`,
-      type: "chart" as const,
-      confidence: chart.confidence ?? 0.7,
-      reason: chart.reason ?? `${chart.title} (${chart.type} chart)`,
-      status: "accepted" as const,
-      details: {
-        chartType: chart.type,
-        columns: [chart.xColumn, ...(chart.yColumns ?? [])].filter(Boolean) as string[],
-        sql: chart.query,
-      },
-    }));
+    if (data?.config.hiddenChartIds) {
+      setHiddenChartIds(new Set(data.config.hiddenChartIds));
+    }
+  }, [data?.config.hiddenChartIds]);
 
-    // Fetch relationships and add as Glass Box decisions
-    fetch(`/api/dashboard/${id}/relationships`)
-      .then((r) => r.json())
-      .then((d) => {
-        const relDecisions: GlassBoxDecision[] = (d.relationships ?? []).filter(
-          (rel: { confidence: number }) => (rel.confidence ?? 0) >= 0.7
-        ).map(
-          (rel: { id: string; from_table: string; from_column: string; to_table: string; to_column: string; type: string; confidence: number; source: string; status: string }) => ({
-            id: `gb-rel-${rel.id}`,
-            type: "relationship" as const,
-            confidence: rel.confidence ?? 0.5,
-            reason: `${rel.from_table}.${rel.from_column} → ${rel.to_table}.${rel.to_column}`,
-            status: rel.status === "accepted" ? "accepted" as const : rel.status === "rejected" ? "rejected" as const : "pending" as const,
-            details: {
-              fromTable: rel.from_table,
-              fromColumn: rel.from_column,
-              toTable: rel.to_table,
-              toColumn: rel.to_column,
-              cardinality: rel.type,
-              source: rel.source as "auto" | "ai-suggested" | "manual",
-            },
-          })
-        );
-        setGlassBoxDecisions([...chartDecisions, ...relDecisions]);
-      })
-      .catch(() => {
-        setGlassBoxDecisions(chartDecisions);
-      });
-  }, [data?.config.charts, data?.config.profile, glassBoxDecisions.length, id]);
+  const handleHideChart = useCallback((chartId: string) => {
+    const next = new Set(hiddenChartIds);
+    next.add(chartId);
+    setHiddenChartIds(next);
+    fetch(`/api/dashboard/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ hiddenChartIds: [...next] }),
+    }).catch((e) => console.error("Failed to persist hiddenChartIds:", e));
+  }, [id, hiddenChartIds]);
 
-  const handleGlassBoxAccept = useCallback((decisionId: string) => {
-    setGlassBoxDecisions((prev) =>
-      prev.map((d) => d.id === decisionId ? { ...d, status: "accepted" as const } : d)
-    );
-  }, []);
-
-  const handleGlassBoxReject = useCallback((decisionId: string) => {
-    setGlassBoxDecisions((prev) =>
-      prev.map((d) => d.id === decisionId ? { ...d, status: "rejected" as const } : d)
-    );
-  }, []);
-
-  const handleGlassBoxAcceptAllHigh = useCallback(() => {
-    setGlassBoxDecisions((prev) =>
-      prev.map((d) => d.status === "pending" && d.confidence >= 0.7 ? { ...d, status: "accepted" as const } : d)
-    );
-  }, []);
+  const handleRestoreAllCharts = useCallback(() => {
+    setHiddenChartIds(new Set());
+    fetch(`/api/dashboard/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ hiddenChartIds: [] }),
+    }).catch((e) => console.error("Failed to persist hiddenChartIds:", e));
+  }, [id]);
 
   // Detect contact CSV on mount
   useEffect(() => {
@@ -635,14 +597,6 @@ function DashboardContent() {
         {/* Active Filters */}
         <FilterBar />
 
-        {/* Glass Box */}
-        <GlassBoxPanel
-          decisions={glassBoxDecisions}
-          onAccept={handleGlassBoxAccept}
-          onReject={handleGlassBoxReject}
-          onAcceptAllHigh={handleGlassBoxAcceptAllHigh}
-        />
-
         {/* Lead Gen Toggle */}
         {contactDetection && !leadGenMode && !classifying && (
           <LeadGenToggle
@@ -714,13 +668,27 @@ function DashboardContent() {
         )}
 
         {/* Chart Grid */}
-        <div className="grid grid-cols-12 gap-4">
-          {visualCharts.map((chart) => (
+        {(() => {
+          const visibleCharts = visualCharts
+            .filter((c) => !hiddenChartIds.has(c.id))
+            .sort((a, b) => (b.confidence ?? 0.7) - (a.confidence ?? 0.7));
+          const primaryCharts = visibleCharts.slice(0, 8);
+          const overflowCharts = visibleCharts.slice(8);
+          const hiddenCount = visualCharts.length - visibleCharts.length;
+
+          const renderChartCard = (chart: ChartData) => (
             <div
               key={chart.id}
-              className="bg-[#1e293b] border border-[#334155] rounded-lg p-5 overflow-hidden"
+              className="relative group bg-[#1e293b] border border-[#334155] rounded-lg p-5 overflow-hidden"
               style={{ gridColumn: `span ${chart.width} / span ${chart.width}` }}
             >
+              <button
+                onClick={() => handleHideChart(chart.id)}
+                className="absolute top-2 right-2 z-10 p-1 rounded-md bg-[#0f1729]/80 border border-[#334155] text-[#94a3b8] hover:text-white hover:border-[#ef4444]/50 hover:bg-[#ef4444]/10 opacity-0 group-hover:opacity-100 transition-all"
+                title="Hide chart"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
               <div className="mb-4">
                 <h3 className="text-sm font-medium text-gray-300">
                   {chart.title}
@@ -733,8 +701,45 @@ function DashboardContent() {
                 <AutoChart chart={chart} />
               </ChartErrorBoundary>
             </div>
-          ))}
-        </div>
+          );
+
+          return (
+            <>
+              {hiddenCount > 0 && (
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-xs text-[#94a3b8]">
+                    {hiddenCount} chart{hiddenCount > 1 ? "s" : ""} hidden
+                  </span>
+                  <button
+                    onClick={handleRestoreAllCharts}
+                    className="text-xs text-[#2563eb] hover:text-[#3b82f6] transition-colors"
+                  >
+                    Show all
+                  </button>
+                </div>
+              )}
+              <div className="grid grid-cols-12 gap-4">
+                {primaryCharts.map(renderChartCard)}
+              </div>
+              {overflowCharts.length > 0 && (
+                <div className="mt-6">
+                  <button
+                    onClick={() => setShowMoreInsights((v) => !v)}
+                    className="flex items-center gap-1.5 text-sm text-[#94a3b8] hover:text-white transition-colors mb-3"
+                  >
+                    {showMoreInsights ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                    More insights ({overflowCharts.length})
+                  </button>
+                  {showMoreInsights && (
+                    <div className="grid grid-cols-12 gap-4">
+                      {overflowCharts.map(renderChartCard)}
+                    </div>
+                  )}
+                </div>
+              )}
+            </>
+          );
+        })()}
       </main>
 
       <AiSidebar

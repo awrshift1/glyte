@@ -102,6 +102,7 @@ const ALLOWED_PATCH_KEYS = new Set<keyof DashboardConfig>([
   "classificationVersion",
   "excludedColumns",
   "title",
+  "hiddenChartIds",
 ]);
 
 export async function PATCH(

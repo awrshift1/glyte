@@ -42,6 +42,7 @@ export interface DashboardConfig {
   leadGenMode?: boolean;
   classificationVersion?: string;
   appendedSources?: AppendedSource[];
+  hiddenChartIds?: string[];
 }
 
 export interface TableEntry {
@@ -108,38 +109,6 @@ export interface SchemaCompatibility {
   commonColumns: string[];
   missingInTarget: string[];
   extraInSource: string[];
-}
-
-export type GlassBoxDecisionType = "chart" | "template" | "relationship";
-export type GlassBoxDecisionStatus = "pending" | "accepted" | "rejected";
-
-export interface GlassBoxDecision {
-  id: string;
-  type: GlassBoxDecisionType;
-  confidence: number;
-  reason: string;
-  status: GlassBoxDecisionStatus;
-  details?: {
-    // Chart details
-    chartType?: string;
-    columns?: string[];
-    columnProfile?: Array<{ name: string; type: string; distinct: number }>;
-    sql?: string;
-    rawData?: unknown;
-    // Relationship details
-    fromTable?: string;
-    fromColumn?: string;
-    toTable?: string;
-    toColumn?: string;
-    cardinality?: string;
-    nameSimilarity?: number;
-    valueOverlap?: number;
-    sampleMatches?: number;
-    source?: "auto" | "ai-suggested" | "manual";
-    // Template details
-    templateId?: string;
-    templateName?: string;
-  };
 }
 
 export interface ClassificationProgress {
