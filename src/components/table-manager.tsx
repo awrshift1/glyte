@@ -53,7 +53,7 @@ export function TableManager({ dashboardId, config, onUpdate, onClose }: TableMa
           );
         }
       })
-      .catch(() => {});
+      .catch((e) => { console.error("Failed to fetch relationships:", e); });
   }, [dashboardId]);
 
   const fetchColumns = useCallback(async (tableName: string) => {
@@ -64,7 +64,9 @@ export function TableManager({ dashboardId, config, onUpdate, onClose }: TableMa
       if (d.columns) {
         setTableColumns((prev) => ({ ...prev, [tableName]: d.columns }));
       }
-    } catch {}
+    } catch (e) {
+      console.error("Failed to fetch columns:", e);
+    }
   }, [tableColumns]);
 
   const toggleExpand = (tableName: string) => {
@@ -97,7 +99,9 @@ export function TableManager({ dashboardId, config, onUpdate, onClose }: TableMa
         }),
       });
       onUpdate();
-    } catch {}
+    } catch (e) {
+      console.error("Failed to toggle column exclusion:", e);
+    }
   };
 
   const handleDeleteTable = async (tableName: string) => {
@@ -109,7 +113,8 @@ export function TableManager({ dashboardId, config, onUpdate, onClose }: TableMa
         body: JSON.stringify({ tableName }),
       });
       onUpdate();
-    } catch {
+    } catch (e) {
+      console.error("Failed to delete table:", e);
     } finally {
       setLoading(false);
     }
@@ -124,7 +129,9 @@ export function TableManager({ dashboardId, config, onUpdate, onClose }: TableMa
       });
       setRelationships((prev) => prev.filter((r) => r.id !== relId));
       onUpdate();
-    } catch {}
+    } catch (e) {
+      console.error("Failed to remove relationship:", e);
+    }
   };
 
   const handleAddRelationship = async (
@@ -162,7 +169,9 @@ export function TableManager({ dashboardId, config, onUpdate, onClose }: TableMa
       }
       setShowAddRelationship(false);
       onUpdate();
-    } catch {}
+    } catch (e) {
+      console.error("Failed to add relationship:", e);
+    }
   };
 
   return (

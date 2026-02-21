@@ -1,6 +1,7 @@
 import type { TableProfile, ColumnProfile } from "@/lib/profiler";
 import type { DashboardTemplate, TemplateMatch } from "./index";
 import type { ChartRecommendation } from "@/lib/chart-recommender";
+import { quoteIdent } from "@/lib/sql-utils";
 
 const CONTACT_COLS = /^(email|name|first.?name|last.?name|full.?name|phone|contact)$/i;
 const STATUS_COLS = /^(status|stage|pipeline|funnel|lead.?status|deal.?stage)$/i;
@@ -84,7 +85,7 @@ export const matchContactPipeline: DashboardTemplate = {
     // KPI: Total Contacts
     charts.push({
       id: nextId(), type: "kpi", title: "Total Contacts",
-      query: `SELECT COUNT(*) as value FROM "${table}"`,
+      query: `SELECT COUNT(*) as value FROM ${quoteIdent(table)}`,
       width: 3, confidence: 0.9, reason: "Total record count",
     });
 
@@ -94,7 +95,7 @@ export const matchContactPipeline: DashboardTemplate = {
       charts.push({
         id: nextId(), type: "kpi",
         title: "With Email",
-        query: `SELECT COUNT(DISTINCT "${emailCol.name}") as value FROM "${table}" WHERE "${emailCol.name}" IS NOT NULL AND "${emailCol.name}" != ''`,
+        query: `SELECT COUNT(DISTINCT ${quoteIdent(emailCol.name)}) as value FROM ${quoteIdent(table)} WHERE ${quoteIdent(emailCol.name)} IS NOT NULL AND ${quoteIdent(emailCol.name)} != ''`,
         width: 3, confidence: 0.85,
         reason: emailCol.nullCount > 0
           ? `${emailCol.nullCount} contacts missing email (${Math.round((1 - emailCol.nullCount / profile.rowCount) * 100)}% coverage)`
@@ -107,7 +108,7 @@ export const matchContactPipeline: DashboardTemplate = {
     if (companyCol) {
       charts.push({
         id: nextId(), type: "kpi", title: "Unique Companies",
-        query: `SELECT COUNT(DISTINCT "${companyCol.name}") as value FROM "${table}" WHERE "${companyCol.name}" IS NOT NULL AND "${companyCol.name}" != ''`,
+        query: `SELECT COUNT(DISTINCT ${quoteIdent(companyCol.name)}) as value FROM ${quoteIdent(table)} WHERE ${quoteIdent(companyCol.name)} IS NOT NULL AND ${quoteIdent(companyCol.name)} != ''`,
         width: 3, confidence: 0.8, reason: `Distinct company count from "${companyCol.name}"`,
       });
     }
@@ -117,7 +118,7 @@ export const matchContactPipeline: DashboardTemplate = {
     if (primarySegment && primarySegment.distinctCount >= 2) {
       charts.push({
         id: nextId(), type: "kpi", title: `${formatTitle(primarySegment.name)} Groups`,
-        query: `SELECT COUNT(DISTINCT "${primarySegment.name}") as value FROM "${table}" WHERE "${primarySegment.name}" IS NOT NULL`,
+        query: `SELECT COUNT(DISTINCT ${quoteIdent(primarySegment.name)}) as value FROM ${quoteIdent(table)} WHERE ${quoteIdent(primarySegment.name)} IS NOT NULL`,
         width: 3, confidence: 0.75, reason: `Number of distinct ${formatTitle(primarySegment.name)} values`,
       });
     } else if (coverageCols.length > 0) {
@@ -126,7 +127,7 @@ export const matchContactPipeline: DashboardTemplate = {
       if (covCol) {
         charts.push({
           id: nextId(), type: "kpi", title: `With ${formatTitle(covCol.name)}`,
-          query: `SELECT COUNT("${covCol.name}") as value FROM "${table}" WHERE "${covCol.name}" IS NOT NULL AND "${covCol.name}" != ''`,
+          query: `SELECT COUNT(${quoteIdent(covCol.name)}) as value FROM ${quoteIdent(table)} WHERE ${quoteIdent(covCol.name)} IS NOT NULL AND ${quoteIdent(covCol.name)} != ''`,
           width: 3, confidence: 0.7,
           reason: `${covCol.nullCount} missing out of ${profile.rowCount} (${Math.round((1 - covCol.nullCount / profile.rowCount) * 100)}% coverage)`,
         });
@@ -144,7 +145,7 @@ export const matchContactPipeline: DashboardTemplate = {
       charts.push({
         id: nextId(), type: "horizontal-bar",
         title: `Contacts by ${formatTitle(breakdownCol.name)}`,
-        query: `SELECT "${breakdownCol.name}", COUNT(*) as "Count" FROM "${table}" WHERE "${breakdownCol.name}" IS NOT NULL GROUP BY "${breakdownCol.name}" ORDER BY "Count" DESC`,
+        query: `SELECT ${quoteIdent(breakdownCol.name)}, COUNT(*) as "Count" FROM ${quoteIdent(table)} WHERE ${quoteIdent(breakdownCol.name)} IS NOT NULL GROUP BY ${quoteIdent(breakdownCol.name)} ORDER BY "Count" DESC`,
         xColumn: breakdownCol.name, yColumns: ["Count"],
         width: 6, confidence: 0.9,
         reason: `Distribution across ${breakdownCol.distinctCount} ${formatTitle(breakdownCol.name)} values`,
@@ -155,7 +156,7 @@ export const matchContactPipeline: DashboardTemplate = {
         charts.push({
           id: nextId(), type: "donut",
           title: `Distribution by ${formatTitle(breakdownCol.name)}`,
-          query: `SELECT "${breakdownCol.name}", COUNT(*) as "Count" FROM "${table}" WHERE "${breakdownCol.name}" IS NOT NULL GROUP BY "${breakdownCol.name}" ORDER BY "Count" DESC`,
+          query: `SELECT ${quoteIdent(breakdownCol.name)}, COUNT(*) as "Count" FROM ${quoteIdent(table)} WHERE ${quoteIdent(breakdownCol.name)} IS NOT NULL GROUP BY ${quoteIdent(breakdownCol.name)} ORDER BY "Count" DESC`,
           xColumn: breakdownCol.name, yColumns: ["Count"],
           width: 6, confidence: 0.85,
           reason: `Proportional view of ${formatTitle(breakdownCol.name)}`,
@@ -169,7 +170,7 @@ export const matchContactPipeline: DashboardTemplate = {
       charts.push({
         id: nextId(), type: "horizontal-bar",
         title: `Contacts by ${formatTitle(secondLowCard.name)}`,
-        query: `SELECT "${secondLowCard.name}", COUNT(*) as "Count" FROM "${table}" WHERE "${secondLowCard.name}" IS NOT NULL GROUP BY "${secondLowCard.name}" ORDER BY "Count" DESC`,
+        query: `SELECT ${quoteIdent(secondLowCard.name)}, COUNT(*) as "Count" FROM ${quoteIdent(table)} WHERE ${quoteIdent(secondLowCard.name)} IS NOT NULL GROUP BY ${quoteIdent(secondLowCard.name)} ORDER BY "Count" DESC`,
         xColumn: secondLowCard.name, yColumns: ["Count"],
         width: 6, confidence: 0.75,
         reason: `Distribution across ${secondLowCard.distinctCount} ${formatTitle(secondLowCard.name)} values`,
@@ -183,7 +184,7 @@ export const matchContactPipeline: DashboardTemplate = {
       // ICP KPI: Total ICP contacts
       charts.push({
         id: nextId(), type: "kpi", title: "ICP Contacts",
-        query: `SELECT COUNT(*) as value FROM "${table}" WHERE "${icpTierCol.name}" IS NOT NULL`,
+        query: `SELECT COUNT(*) as value FROM ${quoteIdent(table)} WHERE ${quoteIdent(icpTierCol.name)} IS NOT NULL`,
         width: 3, confidence: 0.95,
         reason: "Total contacts with ICP classification",
       });
@@ -191,7 +192,7 @@ export const matchContactPipeline: DashboardTemplate = {
       // ICP Hit Rate KPI
       charts.push({
         id: nextId(), type: "kpi", title: "ICP Hit Rate",
-        query: `SELECT ROUND(COUNT(CASE WHEN "${icpTierCol.name}" IS NOT NULL THEN 1 END) * 100.0 / COUNT(*), 1) as value FROM "${table}"`,
+        query: `SELECT ROUND(COUNT(CASE WHEN ${quoteIdent(icpTierCol.name)} IS NOT NULL THEN 1 END) * 100.0 / COUNT(*), 1) as value FROM ${quoteIdent(table)}`,
         width: 3, confidence: 0.9,
         reason: "Percentage of contacts classified as ICP",
       });
@@ -201,7 +202,7 @@ export const matchContactPipeline: DashboardTemplate = {
         charts.push({
           id: nextId(), type: "horizontal-bar",
           title: "Contacts by ICP Tier",
-          query: `SELECT "${icpTierCol.name}", COUNT(*) as "Count" FROM "${table}" WHERE "${icpTierCol.name}" IS NOT NULL GROUP BY "${icpTierCol.name}" ORDER BY "Count" DESC`,
+          query: `SELECT ${quoteIdent(icpTierCol.name)}, COUNT(*) as "Count" FROM ${quoteIdent(table)} WHERE ${quoteIdent(icpTierCol.name)} IS NOT NULL GROUP BY ${quoteIdent(icpTierCol.name)} ORDER BY "Count" DESC`,
           xColumn: icpTierCol.name, yColumns: ["Count"],
           width: 6, confidence: 0.9,
           reason: "ICP tier distribution — purpose-built for classified contacts",
@@ -210,7 +211,7 @@ export const matchContactPipeline: DashboardTemplate = {
         charts.push({
           id: nextId(), type: "donut",
           title: "ICP Tier Distribution",
-          query: `SELECT "${icpTierCol.name}", COUNT(*) as "Count" FROM "${table}" WHERE "${icpTierCol.name}" IS NOT NULL GROUP BY "${icpTierCol.name}" ORDER BY "Count" DESC`,
+          query: `SELECT ${quoteIdent(icpTierCol.name)}, COUNT(*) as "Count" FROM ${quoteIdent(table)} WHERE ${quoteIdent(icpTierCol.name)} IS NOT NULL GROUP BY ${quoteIdent(icpTierCol.name)} ORDER BY "Count" DESC`,
           xColumn: icpTierCol.name, yColumns: ["Count"],
           width: 6, confidence: 0.9,
           reason: "Proportional ICP tier view",
@@ -222,7 +223,7 @@ export const matchContactPipeline: DashboardTemplate = {
         charts.push({
           id: nextId(), type: "bar",
           title: "Top Companies by ICP Tier",
-          query: `SELECT "${companyCol.name}", "${icpTierCol.name}", COUNT(*) as "Count" FROM "${table}" WHERE "${companyCol.name}" IS NOT NULL AND "${companyCol.name}" != '' AND "${icpTierCol.name}" IS NOT NULL GROUP BY "${companyCol.name}", "${icpTierCol.name}" ORDER BY "Count" DESC LIMIT 20`,
+          query: `SELECT ${quoteIdent(companyCol.name)}, ${quoteIdent(icpTierCol.name)}, COUNT(*) as "Count" FROM ${quoteIdent(table)} WHERE ${quoteIdent(companyCol.name)} IS NOT NULL AND ${quoteIdent(companyCol.name)} != '' AND ${quoteIdent(icpTierCol.name)} IS NOT NULL GROUP BY ${quoteIdent(companyCol.name)}, ${quoteIdent(icpTierCol.name)} ORDER BY "Count" DESC LIMIT 20`,
           xColumn: companyCol.name, yColumns: ["Count"], groupBy: icpTierCol.name,
           width: 12, confidence: 0.9,
           reason: "Cross-tabulation of companies by ICP classification",
@@ -240,7 +241,7 @@ export const matchContactPipeline: DashboardTemplate = {
       charts.push({
         id: nextId(), type: "horizontal-bar",
         title: `Top 10 ${formatTitle(cat.name)}`,
-        query: `SELECT "${cat.name}", COUNT(*) as "Count" FROM "${table}" WHERE "${cat.name}" IS NOT NULL AND "${cat.name}" != '' GROUP BY "${cat.name}" ORDER BY "Count" DESC LIMIT 10`,
+        query: `SELECT ${quoteIdent(cat.name)}, COUNT(*) as "Count" FROM ${quoteIdent(table)} WHERE ${quoteIdent(cat.name)} IS NOT NULL AND ${quoteIdent(cat.name)} != '' GROUP BY ${quoteIdent(cat.name)} ORDER BY "Count" DESC LIMIT 10`,
         xColumn: cat.name, yColumns: ["Count"],
         width: 6, confidence: 0.8,
         reason: `Most common ${formatTitle(cat.name)} values (${cat.distinctCount} total)`,
@@ -254,7 +255,7 @@ export const matchContactPipeline: DashboardTemplate = {
       charts.push({
         id: nextId(), type: "bar",
         title: `${formatTitle(num.name)} by ${formatTitle(breakdownCol.name)}`,
-        query: `SELECT "${breakdownCol.name}", SUM("${num.name}") as "${num.name}" FROM "${table}" GROUP BY "${breakdownCol.name}" ORDER BY SUM("${num.name}") DESC`,
+        query: `SELECT ${quoteIdent(breakdownCol.name)}, SUM(${quoteIdent(num.name)}) as ${quoteIdent(num.name)} FROM ${quoteIdent(table)} GROUP BY ${quoteIdent(breakdownCol.name)} ORDER BY SUM(${quoteIdent(num.name)}) DESC`,
         xColumn: breakdownCol.name, yColumns: [num.name],
         width: 6, confidence: 0.75,
         reason: `Metric "${num.name}" segmented by ${formatTitle(breakdownCol.name)}`,
@@ -267,7 +268,7 @@ export const matchContactPipeline: DashboardTemplate = {
       charts.push({
         id: nextId(), type: "line",
         title: "Contacts Over Time",
-        query: `SELECT "${temporal.name}", COUNT(*) as "Count" FROM "${table}" GROUP BY "${temporal.name}" ORDER BY "${temporal.name}"`,
+        query: `SELECT ${quoteIdent(temporal.name)}, COUNT(*) as "Count" FROM ${quoteIdent(table)} GROUP BY ${quoteIdent(temporal.name)} ORDER BY ${quoteIdent(temporal.name)}`,
         xColumn: temporal.name, yColumns: ["Count"],
         width: 6, confidence: 0.8,
         reason: `Timeline from "${temporal.name}"`,
@@ -280,10 +281,10 @@ export const matchContactPipeline: DashboardTemplate = {
     const tableCols = profile.columns
       .filter((c) => !URL_PATTERN.test(c.name) || /email/i.test(c.name))
       .slice(0, 8)
-      .map((c) => `"${c.name}"`);
+      .map((c) => quoteIdent(c.name));
     const tableQuery = tableCols.length > 0 && tableCols.length < profile.columns.length
-      ? `SELECT ${tableCols.join(", ")} FROM "${table}" LIMIT 50`
-      : `SELECT * FROM "${table}" LIMIT 50`;
+      ? `SELECT ${tableCols.join(", ")} FROM ${quoteIdent(table)} LIMIT 50`
+      : `SELECT * FROM ${quoteIdent(table)} LIMIT 50`;
 
     charts.push({
       id: nextId(), type: "table", title: `${formatTitle(table)} Details`,

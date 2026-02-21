@@ -31,16 +31,18 @@ export const ChartGrid = memo(function ChartGrid({
 
   const handleHideChart = useCallback(
     (chartId: string) => {
-      const next = new Set(hiddenChartIds);
-      next.add(chartId);
-      setHiddenChartIds(next);
-      fetch(`/api/dashboard/${dashboardId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ hiddenChartIds: [...next] }),
-      }).catch((e) => console.error("Failed to persist hiddenChartIds:", e));
+      setHiddenChartIds((prev) => {
+        const next = new Set(prev);
+        next.add(chartId);
+        fetch(`/api/dashboard/${dashboardId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ hiddenChartIds: [...next] }),
+        }).catch((e) => console.error("Failed to persist hiddenChartIds:", e));
+        return next;
+      });
     },
-    [dashboardId, hiddenChartIds],
+    [dashboardId],
   );
 
   const handleRestoreAll = useCallback(() => {

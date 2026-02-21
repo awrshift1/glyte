@@ -122,7 +122,8 @@ export function LeadGenSection({
           let event;
           try {
             event = JSON.parse(part.slice(6));
-          } catch {
+          } catch (e) {
+            console.error("Failed to parse SSE event:", e);
             continue;
           }
           if (event.type === "progress" && event.total) {

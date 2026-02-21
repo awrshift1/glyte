@@ -109,6 +109,7 @@ export interface SchemaCompatibility {
   commonColumns: string[];
   missingInTarget: string[];
   extraInSource: string[];
+  columnMapping?: Record<string, string>; // source col → target col (normalized matches)
 }
 
 export interface ClassificationProgress {

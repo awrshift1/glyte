@@ -1,6 +1,7 @@
 import type { TableProfile } from "@/lib/profiler";
 import type { DashboardTemplate, TemplateMatch } from "./index";
 import type { ChartRecommendation } from "@/lib/chart-recommender";
+import { quoteIdent } from "@/lib/sql-utils";
 
 const EVENT_COLS = /^(event|action|activity|type|event.?type|event.?name|step)$/i;
 const USER_COLS = /^(user.?id|customer.?id|account.?id|contact.?id|member.?id|session.?id)$/i;
@@ -48,7 +49,7 @@ export const matchCustomerJourney: DashboardTemplate = {
     // KPI: total events
     charts.push({
       id: nextId(), type: "kpi", title: "Total Events",
-      query: `SELECT COUNT(*) as value FROM "${table}"`,
+      query: `SELECT COUNT(*) as value FROM ${quoteIdent(table)}`,
       width: 3, confidence: 0.9, reason: "Total event count",
     });
 
@@ -56,7 +57,7 @@ export const matchCustomerJourney: DashboardTemplate = {
     if (userCol) {
       charts.push({
         id: nextId(), type: "kpi", title: "Unique Users",
-        query: `SELECT COUNT(DISTINCT "${userCol.name}") as value FROM "${table}"`,
+        query: `SELECT COUNT(DISTINCT ${quoteIdent(userCol.name)}) as value FROM ${quoteIdent(table)}`,
         width: 3, confidence: 0.9, reason: "Distinct user count",
       });
     }
@@ -65,7 +66,7 @@ export const matchCustomerJourney: DashboardTemplate = {
     if (eventCol) {
       charts.push({
         id: nextId(), type: "kpi", title: `Event Types`,
-        query: `SELECT COUNT(DISTINCT "${eventCol.name}") as value FROM "${table}"`,
+        query: `SELECT COUNT(DISTINCT ${quoteIdent(eventCol.name)}) as value FROM ${quoteIdent(table)}`,
         width: 3, confidence: 0.8, reason: "Distinct event types",
       });
     }
@@ -74,7 +75,7 @@ export const matchCustomerJourney: DashboardTemplate = {
     charts.push({
       id: nextId(), type: "line",
       title: "Events Over Time",
-      query: `SELECT "${temporal.name}", COUNT(*) as "Count" FROM "${table}" GROUP BY "${temporal.name}" ORDER BY "${temporal.name}"`,
+      query: `SELECT ${quoteIdent(temporal.name)}, COUNT(*) as "Count" FROM ${quoteIdent(table)} GROUP BY ${quoteIdent(temporal.name)} ORDER BY ${quoteIdent(temporal.name)}`,
       xColumn: temporal.name, yColumns: ["Count"],
       width: 6, confidence: 0.9, reason: `Event frequency over "${temporal.name}"`,
     });
@@ -84,7 +85,7 @@ export const matchCustomerJourney: DashboardTemplate = {
       charts.push({
         id: nextId(), type: "horizontal-bar",
         title: `Events by ${formatTitle(eventCol.name)}`,
-        query: `SELECT "${eventCol.name}", COUNT(*) as "Count" FROM "${table}" WHERE "${eventCol.name}" IS NOT NULL GROUP BY "${eventCol.name}" ORDER BY COUNT(*) DESC`,
+        query: `SELECT ${quoteIdent(eventCol.name)}, COUNT(*) as "Count" FROM ${quoteIdent(table)} WHERE ${quoteIdent(eventCol.name)} IS NOT NULL GROUP BY ${quoteIdent(eventCol.name)} ORDER BY COUNT(*) DESC`,
         xColumn: eventCol.name, yColumns: ["Count"],
         width: 6, confidence: 0.85, reason: `Event type distribution`,
       });
@@ -94,7 +95,7 @@ export const matchCustomerJourney: DashboardTemplate = {
         charts.push({
           id: nextId(), type: "bar",
           title: `Users per ${formatTitle(eventCol.name)}`,
-          query: `SELECT "${eventCol.name}", COUNT(DISTINCT "${userCol.name}") as "Users" FROM "${table}" WHERE "${eventCol.name}" IS NOT NULL GROUP BY "${eventCol.name}" ORDER BY "Users" DESC`,
+          query: `SELECT ${quoteIdent(eventCol.name)}, COUNT(DISTINCT ${quoteIdent(userCol.name)}) as "Users" FROM ${quoteIdent(table)} WHERE ${quoteIdent(eventCol.name)} IS NOT NULL GROUP BY ${quoteIdent(eventCol.name)} ORDER BY "Users" DESC`,
           xColumn: eventCol.name, yColumns: ["Users"],
           width: 6, confidence: 0.8, reason: `Unique users reaching each event type`,
         });
@@ -103,7 +104,7 @@ export const matchCustomerJourney: DashboardTemplate = {
 
     charts.push({
       id: nextId(), type: "table", title: `${formatTitle(table)} Details`,
-      query: `SELECT * FROM "${table}" ORDER BY "${temporal.name}" DESC LIMIT 50`, width: 12,
+      query: `SELECT * FROM ${quoteIdent(table)} ORDER BY ${quoteIdent(temporal.name)} DESC LIMIT 50`, width: 12,
       confidence: 0.7, reason: `Timeline view of events (most recent first)`,
     });
 

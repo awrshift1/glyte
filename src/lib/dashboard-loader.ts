@@ -1,7 +1,9 @@
 import { readFile, writeFile } from "fs/promises";
 import path from "path";
-import { ensureTable } from "./duckdb";
+import { ensureTable, query, ingestCsv, appendCsv, backfillSource, dropTable } from "./duckdb";
+import { quoteLiteral } from "./sql-utils";
 import { profileTable } from "./profiler";
+import fs from "fs";
 import { recommendCharts } from "./chart-recommender";
 import type { DashboardConfig } from "@/types/dashboard";
 
@@ -82,6 +84,25 @@ export async function loadDashboard(id: string): Promise<DashboardConfig> {
   // Ensure additional tables (multi-table dashboards) — parallel
   if (config.tables && config.tables.length > 0) {
     await Promise.all(config.tables.map((t) => ensureTable(t.tableName, t.csvPath)));
+  }
+
+  // Recovery: re-append sources if table was re-ingested from CSV (lost _source + appended rows)
+  if (config.appendedSources && config.appendedSources.length > 0) {
+    const hasSource = await query<{ cnt: number }>(
+      `SELECT COUNT(*) as cnt FROM information_schema.columns WHERE table_schema = 'main' AND table_name = ${quoteLiteral(config.tableName)} AND column_name = '_source'`
+    );
+    if (Number(hasSource[0].cnt) === 0) {
+      for (const src of config.appendedSources) {
+        if (!fs.existsSync(src.csvPath)) continue;
+        const tempName = `_reappend_${Date.now()}`;
+        await ingestCsv(src.csvPath, tempName);
+        await appendCsv(config.tableName, tempName, src.label);
+        await dropTable(tempName);
+      }
+      await backfillSource(config.tableName, config.title);
+      config.profile = await profileTable(config.tableName);
+      await writeFile(configPath, JSON.stringify(config, null, 2));
+    }
   }
 
   let configChanged = false;

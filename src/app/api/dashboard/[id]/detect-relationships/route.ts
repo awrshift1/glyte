@@ -3,6 +3,7 @@ import { loadDashboard } from "@/lib/dashboard-loader";
 import { detectRelationships, enhanceWithLlm } from "@/lib/relationship-detector";
 import { createRelationship, getRelationshipsByTables, type StoredRelationship } from "@/lib/relationship-store";
 import { sanitizeDashboardId } from "@/lib/dashboard-loader";
+import { safeErrorMessage } from "@/lib/sql-utils";
 
 export async function POST(
   request: NextRequest,
@@ -82,6 +83,6 @@ export async function POST(
       filtered: suggestions.length - newSuggestions.length,
     });
   } catch (error) {
-    return NextResponse.json({ error: String(error) }, { status: 500 });
+    return NextResponse.json({ error: safeErrorMessage(error) }, { status: 500 });
   }
 }

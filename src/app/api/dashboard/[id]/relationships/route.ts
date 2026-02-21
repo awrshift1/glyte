@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sanitizeDashboardId } from "@/lib/dashboard-loader";
+import { safeErrorMessage } from "@/lib/sql-utils";
 import {
   getRelationships,
   createRelationship,
@@ -17,7 +18,7 @@ export async function GET(
     const relationships = await getRelationships(safeId);
     return NextResponse.json({ relationships });
   } catch (error) {
-    return NextResponse.json({ error: String(error) }, { status: 500 });
+    return NextResponse.json({ error: safeErrorMessage(error) }, { status: 500 });
   }
 }
 
@@ -57,7 +58,7 @@ export async function POST(
 
     return NextResponse.json({ relationship });
   } catch (error) {
-    return NextResponse.json({ error: String(error) }, { status: 500 });
+    return NextResponse.json({ error: safeErrorMessage(error) }, { status: 500 });
   }
 }
 
@@ -72,6 +73,6 @@ export async function DELETE(
     await deleteRelationship(relationshipId);
     return NextResponse.json({ deleted: relationshipId });
   } catch (error) {
-    return NextResponse.json({ error: String(error) }, { status: 500 });
+    return NextResponse.json({ error: safeErrorMessage(error) }, { status: 500 });
   }
 }

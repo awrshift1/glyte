@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { loadDashboard } from "@/lib/dashboard-loader";
+import { safeErrorMessage } from "@/lib/sql-utils";
 
 export async function GET(
   _request: NextRequest,
@@ -28,6 +29,6 @@ export async function GET(
       versions: [currentVersion, ...previous.reverse()],
     });
   } catch (error) {
-    return NextResponse.json({ error: String(error) }, { status: 500 });
+    return NextResponse.json({ error: safeErrorMessage(error) }, { status: 500 });
   }
 }

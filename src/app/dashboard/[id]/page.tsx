@@ -162,8 +162,8 @@ function DashboardContent() {
         if (detectData.suggestions?.length > 0) {
           suggestions = detectData.suggestions;
         }
-      } catch {
-        // Detection failed silently
+      } catch (e) {
+        console.error("Failed to detect relationships:", e);
       }
 
       setTableAddedInfo({
@@ -212,8 +212,8 @@ function DashboardContent() {
         if (detectData.suggestions?.length > 0) {
           suggestions = detectData.suggestions;
         }
-      } catch {
-        // Detection failed silently
+      } catch (e) {
+        console.error("Failed to detect relationships for existing table:", e);
       }
 
       setTableAddedInfo({
@@ -281,8 +281,8 @@ function DashboardContent() {
       }
 
       fetchDashboard();
-    } catch {
-      // Non-blocking
+    } catch (e) {
+      console.error("Failed to save table configuration:", e);
     } finally {
       setTableAddedInfo(null);
     }

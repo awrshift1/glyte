@@ -29,6 +29,7 @@ async function getInstance(): Promise<DuckDBInstance> {
   const conn = await instance.connect();
   try {
     await conn.run("PRAGMA wal_autocheckpoint='256KB'");
+    await conn.run("SET enable_external_access = false");
   } finally {
     conn.closeSync();
   }
@@ -40,11 +41,19 @@ async function getInstance(): Promise<DuckDBInstance> {
 }
 
 // Connection pool — reuse connections instead of create/destroy per query
+const MAX_CONNECTIONS = 20;
+let activeConnections = 0;
+
 async function acquireConnection(): Promise<DuckDBConnection> {
   const db = await getInstance();
   if (!globalState.__glyte_pool) globalState.__glyte_pool = [];
   const conn = globalState.__glyte_pool.pop();
-  return conn || db.connect();
+  if (conn) return conn;
+  if (activeConnections >= MAX_CONNECTIONS) {
+    throw new Error("Connection pool exhausted");
+  }
+  activeConnections++;
+  return db.connect();
 }
 
 function releaseConnection(conn: DuckDBConnection, discard = false): void {
@@ -52,6 +61,7 @@ function releaseConnection(conn: DuckDBConnection, discard = false): void {
   if (!discard && pool && pool.length < POOL_SIZE) {
     pool.push(conn);
   } else {
+    activeConnections = Math.max(0, activeConnections - 1);
     try { conn.closeSync(); } catch { /* already closed */ }
   }
 }
@@ -187,6 +197,10 @@ export async function getTables(): Promise<string[]> {
 
 export type { SchemaCompatibility };
 
+function normalizeColName(name: string): string {
+  return name.toLowerCase().replace(/[_\-\s]/g, "");
+}
+
 export async function schemaCompatibility(
   sourceTable: string,
   targetTable: string
@@ -199,12 +213,46 @@ export async function schemaCompatibility(
   );
 
   const srcNames = srcCols.map((r) => r.column_name);
-  const tgtNames = new Set(tgtCols.map((r) => r.column_name));
+  const tgtNamesList = tgtCols.map((r) => r.column_name);
+  const tgtNames = new Set(tgtNamesList);
 
+  // Pass 1: exact match
   const commonColumns = srcNames.filter((c) => tgtNames.has(c));
-  const missingInTarget = srcNames.filter((c) => !tgtNames.has(c));
-  const extraInSource = [...tgtNames].filter((c) => !srcNames.includes(c));
-  const overlapPercent = srcNames.length > 0 ? Math.round((commonColumns.length / srcNames.length) * 100) : 0;
+  const exactMatchedSrc = new Set(commonColumns);
+
+  // Pass 2: normalized match for unmatched columns
+  const unmatchedSrc = srcNames.filter((c) => !exactMatchedSrc.has(c));
+  const unmatchedTgt = tgtNamesList.filter((c) => !exactMatchedSrc.has(c));
+
+  const columnMapping: Record<string, string> = {};
+  const normalizedTgtMap = new Map<string, string>(); // normalized → original target name
+  for (const t of unmatchedTgt) {
+    const norm = normalizeColName(t);
+    if (!normalizedTgtMap.has(norm)) {
+      normalizedTgtMap.set(norm, t);
+    }
+  }
+
+  const usedTgt = new Set<string>();
+  for (const s of unmatchedSrc) {
+    const norm = normalizeColName(s);
+    const tgtMatch = normalizedTgtMap.get(norm);
+    if (tgtMatch && !usedTgt.has(tgtMatch)) {
+      columnMapping[s] = tgtMatch;
+      usedTgt.add(tgtMatch);
+    }
+  }
+
+  const mappedSrcSet = new Set(Object.keys(columnMapping));
+  const matchedCount = commonColumns.length + mappedSrcSet.size;
+  const missingInTarget = srcNames.filter(
+    (c) => !exactMatchedSrc.has(c) && !mappedSrcSet.has(c)
+  );
+  const extraInSource = tgtNamesList.filter(
+    (c) => !exactMatchedSrc.has(c) && !usedTgt.has(c)
+  );
+  const overlapPercent =
+    srcNames.length > 0 ? Math.round((matchedCount / srcNames.length) * 100) : 0;
 
   return {
     compatible: overlapPercent >= 50,
@@ -212,6 +260,7 @@ export async function schemaCompatibility(
     commonColumns,
     missingInTarget,
     extraInSource,
+    ...(Object.keys(columnMapping).length > 0 ? { columnMapping } : {}),
   };
 }
 
@@ -233,7 +282,7 @@ export async function appendCsv(
       await conn.run(`ALTER TABLE ${safeTarget} ADD COLUMN "_source" VARCHAR`);
     }
 
-    // Add any source columns missing in target
+    // Add any source columns missing in target (truly unmapped only)
     const compat = await schemaCompatibility(sourceTable, targetTable);
     for (const col of compat.missingInTarget) {
       if (col === "_source") continue;
@@ -244,9 +293,25 @@ export async function appendCsv(
     const countBefore = await conn.run(`SELECT COUNT(*) as cnt FROM ${quoteIdent(sourceTable)}`);
     const newRows = Number((await countBefore.getRows())[0][0]);
 
-    // INSERT BY NAME with _source label
+    // Build SELECT with column mapping aliases
+    const mapping = compat.columnMapping ?? {};
+    const srcColsResult = await query<{ column_name: string }>(
+      `SELECT column_name FROM information_schema.columns WHERE table_schema = 'main' AND table_name = ${quoteLiteral(sourceTable)} ORDER BY ordinal_position`
+    );
+    const srcColNames = srcColsResult.map((r) => r.column_name);
+
+    const selectParts: string[] = [];
+    for (const col of srcColNames) {
+      if (mapping[col]) {
+        selectParts.push(`${quoteIdent(col)} AS ${quoteIdent(mapping[col])}`);
+      } else {
+        selectParts.push(quoteIdent(col));
+      }
+    }
+    selectParts.push(`${quoteLiteral(sourceLabel)} AS "_source"`);
+
     await conn.run(
-      `INSERT INTO ${safeTarget} BY NAME (SELECT *, ${quoteLiteral(sourceLabel)} as "_source" FROM ${quoteIdent(sourceTable)})`
+      `INSERT INTO ${safeTarget} BY NAME (SELECT ${selectParts.join(", ")} FROM ${quoteIdent(sourceTable)})`
     );
 
     // Get total rows after insert

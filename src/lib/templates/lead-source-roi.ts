@@ -1,6 +1,7 @@
 import type { TableProfile } from "@/lib/profiler";
 import type { DashboardTemplate, TemplateMatch } from "./index";
 import type { ChartRecommendation } from "@/lib/chart-recommender";
+import { quoteIdent } from "@/lib/sql-utils";
 
 const SOURCE_COLS = /^(source|lead.?source|referral|origin|acquisition)$/i;
 const COST_COLS = /^(cost|spend|budget|investment|ad.?spend|cpa|cpc)$/i;
@@ -50,27 +51,27 @@ export const matchLeadSourceRoi: DashboardTemplate = {
     if (revenueCol) {
       charts.push({
         id: nextId(), type: "kpi", title: `Total ${formatTitle(revenueCol.name)}`,
-        query: `SELECT SUM("${revenueCol.name}") as value FROM "${table}"`,
+        query: `SELECT SUM(${quoteIdent(revenueCol.name)}) as value FROM ${quoteIdent(table)}`,
         width: 3, confidence: 0.9, reason: "Total revenue/value",
       });
     }
     if (costCol) {
       charts.push({
         id: nextId(), type: "kpi", title: `Total ${formatTitle(costCol.name)}`,
-        query: `SELECT SUM("${costCol.name}") as value FROM "${table}"`,
+        query: `SELECT SUM(${quoteIdent(costCol.name)}) as value FROM ${quoteIdent(table)}`,
         width: 3, confidence: 0.9, reason: "Total cost/spend",
       });
     }
     if (costCol && revenueCol) {
       charts.push({
         id: nextId(), type: "kpi", title: "ROI",
-        query: `SELECT ROUND((SUM("${revenueCol.name}") - SUM("${costCol.name}")) / NULLIF(SUM("${costCol.name}"), 0) * 100, 1) as value FROM "${table}"`,
+        query: `SELECT ROUND((SUM(${quoteIdent(revenueCol.name)}) - SUM(${quoteIdent(costCol.name)})) / NULLIF(SUM(${quoteIdent(costCol.name)}), 0) * 100, 1) as value FROM ${quoteIdent(table)}`,
         width: 3, confidence: 0.85, reason: "Return on investment percentage",
       });
     }
     charts.push({
       id: nextId(), type: "kpi", title: "Total Records",
-      query: `SELECT COUNT(*) as value FROM "${table}"`,
+      query: `SELECT COUNT(*) as value FROM ${quoteIdent(table)}`,
       width: 3, confidence: 0.8, reason: "Record count",
     });
 
@@ -79,7 +80,7 @@ export const matchLeadSourceRoi: DashboardTemplate = {
       charts.push({
         id: nextId(), type: "horizontal-bar",
         title: `${formatTitle(revenueCol.name)} by ${formatTitle(sourceCol.name)}`,
-        query: `SELECT "${sourceCol.name}", SUM("${revenueCol.name}") as "${revenueCol.name}" FROM "${table}" GROUP BY "${sourceCol.name}" ORDER BY SUM("${revenueCol.name}") DESC`,
+        query: `SELECT ${quoteIdent(sourceCol.name)}, SUM(${quoteIdent(revenueCol.name)}) as ${quoteIdent(revenueCol.name)} FROM ${quoteIdent(table)} GROUP BY ${quoteIdent(sourceCol.name)} ORDER BY SUM(${quoteIdent(revenueCol.name)}) DESC`,
         xColumn: sourceCol.name, yColumns: [revenueCol.name],
         width: 6, confidence: 0.9, reason: "Revenue breakdown by source",
       });
@@ -90,7 +91,7 @@ export const matchLeadSourceRoi: DashboardTemplate = {
       charts.push({
         id: nextId(), type: "horizontal-bar",
         title: `${formatTitle(costCol.name)} by ${formatTitle(sourceCol.name)}`,
-        query: `SELECT "${sourceCol.name}", SUM("${costCol.name}") as "${costCol.name}" FROM "${table}" GROUP BY "${sourceCol.name}" ORDER BY SUM("${costCol.name}") DESC`,
+        query: `SELECT ${quoteIdent(sourceCol.name)}, SUM(${quoteIdent(costCol.name)}) as ${quoteIdent(costCol.name)} FROM ${quoteIdent(table)} GROUP BY ${quoteIdent(sourceCol.name)} ORDER BY SUM(${quoteIdent(costCol.name)}) DESC`,
         xColumn: sourceCol.name, yColumns: [costCol.name],
         width: 6, confidence: 0.85, reason: "Cost breakdown by source",
       });
@@ -100,7 +101,7 @@ export const matchLeadSourceRoi: DashboardTemplate = {
     charts.push({
       id: nextId(), type: "donut",
       title: `Records by ${formatTitle(sourceCol.name)}`,
-      query: `SELECT "${sourceCol.name}", COUNT(*) as "Count" FROM "${table}" WHERE "${sourceCol.name}" IS NOT NULL GROUP BY "${sourceCol.name}" ORDER BY COUNT(*) DESC`,
+      query: `SELECT ${quoteIdent(sourceCol.name)}, COUNT(*) as "Count" FROM ${quoteIdent(table)} WHERE ${quoteIdent(sourceCol.name)} IS NOT NULL GROUP BY ${quoteIdent(sourceCol.name)} ORDER BY COUNT(*) DESC`,
       xColumn: sourceCol.name, yColumns: ["Count"],
       width: 6, confidence: 0.8, reason: "Source distribution",
     });
@@ -111,7 +112,7 @@ export const matchLeadSourceRoi: DashboardTemplate = {
       charts.push({
         id: nextId(), type: "line",
         title: `${formatTitle(revenueCol.name)} Over Time`,
-        query: `SELECT "${temporal.name}", SUM("${revenueCol.name}") as "${revenueCol.name}" FROM "${table}" GROUP BY "${temporal.name}" ORDER BY "${temporal.name}"`,
+        query: `SELECT ${quoteIdent(temporal.name)}, SUM(${quoteIdent(revenueCol.name)}) as ${quoteIdent(revenueCol.name)} FROM ${quoteIdent(table)} GROUP BY ${quoteIdent(temporal.name)} ORDER BY ${quoteIdent(temporal.name)}`,
         xColumn: temporal.name, yColumns: [revenueCol.name],
         width: 6, confidence: 0.85, reason: "Revenue trend",
       });
@@ -119,7 +120,7 @@ export const matchLeadSourceRoi: DashboardTemplate = {
 
     charts.push({
       id: nextId(), type: "table", title: `${formatTitle(table)} Details`,
-      query: `SELECT * FROM "${table}" LIMIT 50`, width: 12,
+      query: `SELECT * FROM ${quoteIdent(table)} LIMIT 50`, width: 12,
       confidence: 0.7, reason: `Source performance details`,
     });
 

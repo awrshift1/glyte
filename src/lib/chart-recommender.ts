@@ -1,4 +1,5 @@
 import { ColumnProfile, TableProfile } from "./profiler";
+import { quoteIdent } from "./sql-utils";
 
 export type ChartType = "kpi" | "line" | "bar" | "horizontal-bar" | "donut" | "table";
 
@@ -54,7 +55,7 @@ export function recommendCharts(profile: TableProfile): ChartRecommendation[] {
       id: nextId(),
       type: "kpi",
       title: formatTitle(num.name),
-      query: `SELECT SUM("${num.name}") as value FROM "${table}"`,
+      query: `SELECT SUM(${quoteIdent(num.name)}) as value FROM ${quoteIdent(table)}`,
       width: 3,
       confidence: conf,
       reason: `Shows total ${formatTitle(num.name)} across all ${profile.rowCount} rows`,
@@ -70,7 +71,7 @@ export function recommendCharts(profile: TableProfile): ChartRecommendation[] {
       id: nextId(),
       type: "line",
       title: `${formatTitle(yNumerics[0].name)} Over Time`,
-      query: `SELECT "${timeCol.name}", ${yNumerics.map((n) => `SUM("${n.name}") as "${n.name}"`).join(", ")} FROM "${table}" GROUP BY "${timeCol.name}" ORDER BY "${timeCol.name}"`,
+      query: `SELECT ${quoteIdent(timeCol.name)}, ${yNumerics.map((n) => `SUM(${quoteIdent(n.name)}) as ${quoteIdent(n.name)}`).join(", ")} FROM ${quoteIdent(table)} GROUP BY ${quoteIdent(timeCol.name)} ORDER BY ${quoteIdent(timeCol.name)}`,
       xColumn: timeCol.name,
       yColumns: yNumerics.map((n) => n.name),
       width: 6,
@@ -87,7 +88,7 @@ export function recommendCharts(profile: TableProfile): ChartRecommendation[] {
       id: nextId(),
       type: "horizontal-bar",
       title: `${formatTitle(num.name)} by ${formatTitle(cat.name)}`,
-      query: `SELECT "${cat.name}", SUM("${num.name}") as "${num.name}" FROM "${table}" GROUP BY "${cat.name}" ORDER BY SUM("${num.name}") DESC`,
+      query: `SELECT ${quoteIdent(cat.name)}, SUM(${quoteIdent(num.name)}) as ${quoteIdent(num.name)} FROM ${quoteIdent(table)} GROUP BY ${quoteIdent(cat.name)} ORDER BY SUM(${quoteIdent(num.name)}) DESC`,
       xColumn: cat.name,
       yColumns: [num.name],
       width: 6,
@@ -105,7 +106,7 @@ export function recommendCharts(profile: TableProfile): ChartRecommendation[] {
       id: nextId(),
       type: "bar",
       title: `${formatTitle(num.name)} by ${formatTitle(cat2.name)}`,
-      query: `SELECT "${cat2.name}", "${cat1.name}", SUM("${num.name}") as "${num.name}" FROM "${table}" GROUP BY "${cat2.name}", "${cat1.name}" ORDER BY "${cat2.name}"`,
+      query: `SELECT ${quoteIdent(cat2.name)}, ${quoteIdent(cat1.name)}, SUM(${quoteIdent(num.name)}) as ${quoteIdent(num.name)} FROM ${quoteIdent(table)} GROUP BY ${quoteIdent(cat2.name)}, ${quoteIdent(cat1.name)} ORDER BY ${quoteIdent(cat2.name)}`,
       xColumn: cat2.name,
       yColumns: [num.name],
       groupBy: cat1.name,
@@ -123,7 +124,7 @@ export function recommendCharts(profile: TableProfile): ChartRecommendation[] {
         id: nextId(),
         type: "horizontal-bar",
         title: `Top 10 ${formatTitle(cat.name)} by ${formatTitle(num.name)}`,
-        query: `SELECT "${cat.name}", SUM("${num.name}") as "${num.name}" FROM "${table}" WHERE "${cat.name}" IS NOT NULL AND "${cat.name}" != '' GROUP BY "${cat.name}" ORDER BY SUM("${num.name}") DESC LIMIT 10`,
+        query: `SELECT ${quoteIdent(cat.name)}, SUM(${quoteIdent(num.name)}) as ${quoteIdent(num.name)} FROM ${quoteIdent(table)} WHERE ${quoteIdent(cat.name)} IS NOT NULL AND ${quoteIdent(cat.name)} != '' GROUP BY ${quoteIdent(cat.name)} ORDER BY SUM(${quoteIdent(num.name)}) DESC LIMIT 10`,
         xColumn: cat.name,
         yColumns: [num.name],
         width: 6,
@@ -141,7 +142,7 @@ export function recommendCharts(profile: TableProfile): ChartRecommendation[] {
       id: nextId(),
       type: "donut",
       title: `${formatTitle(num.name)} by ${formatTitle(donutCat.name)}`,
-      query: `SELECT "${donutCat.name}", SUM("${num.name}") as "${num.name}" FROM "${table}" GROUP BY "${donutCat.name}" ORDER BY SUM("${num.name}") DESC`,
+      query: `SELECT ${quoteIdent(donutCat.name)}, SUM(${quoteIdent(num.name)}) as ${quoteIdent(num.name)} FROM ${quoteIdent(table)} GROUP BY ${quoteIdent(donutCat.name)} ORDER BY SUM(${quoteIdent(num.name)}) DESC`,
       xColumn: donutCat.name,
       yColumns: [num.name],
       width: 6,
@@ -157,7 +158,7 @@ export function recommendCharts(profile: TableProfile): ChartRecommendation[] {
       id: nextId(),
       type: "kpi",
       title: "Total Records",
-      query: `SELECT COUNT(*) as value FROM "${table}"`,
+      query: `SELECT COUNT(*) as value FROM ${quoteIdent(table)}`,
       width: 3,
       confidence: 0.9,
       reason: `Total row count for ${formatTitle(table)}`,
@@ -170,7 +171,7 @@ export function recommendCharts(profile: TableProfile): ChartRecommendation[] {
         id: nextId(),
         type: "kpi",
         title: `Unique ${formatTitle(firstDimension.name)}`,
-        query: `SELECT COUNT(DISTINCT "${firstDimension.name}") as value FROM "${table}" WHERE "${firstDimension.name}" IS NOT NULL AND "${firstDimension.name}" != ''`,
+        query: `SELECT COUNT(DISTINCT ${quoteIdent(firstDimension.name)}) as value FROM ${quoteIdent(table)} WHERE ${quoteIdent(firstDimension.name)} IS NOT NULL AND ${quoteIdent(firstDimension.name)} != ''`,
         width: 3,
         confidence: 0.8,
         reason: `Distinct count of ${formatTitle(firstDimension.name)} (${firstDimension.distinctCount} unique values)`,
@@ -183,7 +184,7 @@ export function recommendCharts(profile: TableProfile): ChartRecommendation[] {
         id: nextId(),
         type: "horizontal-bar",
         title: `Records by ${formatTitle(cat.name)}`,
-        query: `SELECT "${cat.name}", COUNT(*) as "Count" FROM "${table}" WHERE "${cat.name}" IS NOT NULL AND "${cat.name}" != '' GROUP BY "${cat.name}" ORDER BY COUNT(*) DESC`,
+        query: `SELECT ${quoteIdent(cat.name)}, COUNT(*) as "Count" FROM ${quoteIdent(table)} WHERE ${quoteIdent(cat.name)} IS NOT NULL AND ${quoteIdent(cat.name)} != '' GROUP BY ${quoteIdent(cat.name)} ORDER BY COUNT(*) DESC`,
         xColumn: cat.name,
         yColumns: ["Count"],
         width: 6,
@@ -198,7 +199,7 @@ export function recommendCharts(profile: TableProfile): ChartRecommendation[] {
         id: nextId(),
         type: "horizontal-bar",
         title: `Top 10 ${formatTitle(cat.name)}`,
-        query: `SELECT "${cat.name}", COUNT(*) as "Count" FROM "${table}" WHERE "${cat.name}" IS NOT NULL AND "${cat.name}" != '' GROUP BY "${cat.name}" ORDER BY COUNT(*) DESC LIMIT 10`,
+        query: `SELECT ${quoteIdent(cat.name)}, COUNT(*) as "Count" FROM ${quoteIdent(table)} WHERE ${quoteIdent(cat.name)} IS NOT NULL AND ${quoteIdent(cat.name)} != '' GROUP BY ${quoteIdent(cat.name)} ORDER BY COUNT(*) DESC LIMIT 10`,
         xColumn: cat.name,
         yColumns: ["Count"],
         width: 6,
@@ -214,7 +215,7 @@ export function recommendCharts(profile: TableProfile): ChartRecommendation[] {
         id: nextId(),
         type: "donut",
         title: `Distribution by ${formatTitle(donutCatNoNum.name)}`,
-        query: `SELECT "${donutCatNoNum.name}", COUNT(*) as "Count" FROM "${table}" WHERE "${donutCatNoNum.name}" IS NOT NULL AND "${donutCatNoNum.name}" != '' GROUP BY "${donutCatNoNum.name}" ORDER BY COUNT(*) DESC`,
+        query: `SELECT ${quoteIdent(donutCatNoNum.name)}, COUNT(*) as "Count" FROM ${quoteIdent(table)} WHERE ${quoteIdent(donutCatNoNum.name)} IS NOT NULL AND ${quoteIdent(donutCatNoNum.name)} != '' GROUP BY ${quoteIdent(donutCatNoNum.name)} ORDER BY COUNT(*) DESC`,
         xColumn: donutCatNoNum.name,
         yColumns: ["Count"],
         width: 6,
@@ -230,7 +231,7 @@ export function recommendCharts(profile: TableProfile): ChartRecommendation[] {
         id: nextId(),
         type: "line",
         title: "Records Over Time",
-        query: `SELECT "${timeCol.name}", COUNT(*) as "Count" FROM "${table}" GROUP BY "${timeCol.name}" ORDER BY "${timeCol.name}"`,
+        query: `SELECT ${quoteIdent(timeCol.name)}, COUNT(*) as "Count" FROM ${quoteIdent(table)} GROUP BY ${quoteIdent(timeCol.name)} ORDER BY ${quoteIdent(timeCol.name)}`,
         xColumn: timeCol.name,
         yColumns: ["Count"],
         width: 6,
@@ -259,19 +260,19 @@ function buildSummaryTableQuery(profile: TableProfile): string {
   const nums = profile.columns.filter((c) => c.type === "numeric");
 
   if (cats.length === 0) {
-    return `SELECT * FROM "${profile.tableName}" LIMIT 50`;
+    return `SELECT * FROM ${quoteIdent(profile.tableName)} LIMIT 50`;
   }
 
-  const groupCols = cats.slice(0, 2).map((c) => `"${c.name}"`);
+  const groupCols = cats.slice(0, 2).map((c) => quoteIdent(c.name));
   const aggCols = nums
     .slice(0, 5)
-    .map((c) => `SUM("${c.name}") as "${c.name}"`);
+    .map((c) => `SUM(${quoteIdent(c.name)}) as ${quoteIdent(c.name)}`);
 
   if (aggCols.length === 0) {
-    return `SELECT * FROM "${profile.tableName}" LIMIT 50`;
+    return `SELECT * FROM ${quoteIdent(profile.tableName)} LIMIT 50`;
   }
 
-  return `SELECT ${groupCols.join(", ")}, ${aggCols.join(", ")} FROM "${profile.tableName}" GROUP BY ${groupCols.join(", ")} ORDER BY ${aggCols[0].split(" as ")[0].replace("SUM", "SUM")} DESC`;
+  return `SELECT ${groupCols.join(", ")}, ${aggCols.join(", ")} FROM ${quoteIdent(profile.tableName)} GROUP BY ${groupCols.join(", ")} ORDER BY ${aggCols[0].split(" as ")[0].replace("SUM", "SUM")} DESC`;
 }
 
 function formatTitle(name: string): string {

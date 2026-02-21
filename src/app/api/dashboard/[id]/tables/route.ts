@@ -3,6 +3,7 @@ import { writeFile, mkdir, readFile } from "fs/promises";
 import path from "path";
 import { ingestCsv, dropTable, schemaCompatibility } from "@/lib/duckdb";
 import { sanitizeDashboardId, safeUploadFilename } from "@/lib/dashboard-loader";
+import { safeCsvPath, safeErrorMessage } from "@/lib/sql-utils";
 import type { DashboardConfig, TableEntry } from "@/types/dashboard";
 
 const DASHBOARDS_DIR = path.join(process.cwd(), "data", "dashboards");
@@ -29,6 +30,7 @@ export async function POST(
       if (!csvPath) {
         return NextResponse.json({ error: "csvPath required" }, { status: 400 });
       }
+      safeCsvPath(csvPath); // throws if outside allowed dirs
       filePath = csvPath;
       tableName = path.basename(csvPath)
         .replace(/\.(csv|tsv|xlsx?)$/i, "")
@@ -91,7 +93,7 @@ export async function POST(
       schemaMatch,
     });
   } catch (error) {
-    return NextResponse.json({ error: String(error) }, { status: 500 });
+    return NextResponse.json({ error: safeErrorMessage(error) }, { status: 500 });
   }
 }
 
@@ -134,7 +136,7 @@ export async function PATCH(
 
     return NextResponse.json({ updated: tableName, excludedColumns: table.excludedColumns ?? [] });
   } catch (error) {
-    return NextResponse.json({ error: String(error) }, { status: 500 });
+    return NextResponse.json({ error: safeErrorMessage(error) }, { status: 500 });
   }
 }
 
@@ -168,6 +170,6 @@ export async function DELETE(
 
     return NextResponse.json({ deleted: tableName, totalTables: config.tables.length });
   } catch (error) {
-    return NextResponse.json({ error: String(error) }, { status: 500 });
+    return NextResponse.json({ error: safeErrorMessage(error) }, { status: 500 });
   }
 }

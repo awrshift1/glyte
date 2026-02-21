@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { query } from "@/lib/duckdb";
 import { loadDashboard } from "@/lib/dashboard-loader";
+import { BLOCKED_SQL, BLOCKED_FUNCTIONS, safeErrorMessage } from "@/lib/sql-utils";
 
 export async function POST(
   request: NextRequest,
@@ -18,6 +19,14 @@ export async function POST(
       return NextResponse.json({ error: "Only SELECT queries are allowed" }, { status: 400 });
     }
 
+    if (BLOCKED_SQL.test(sql)) {
+      return NextResponse.json({ error: "Query contains blocked keywords" }, { status: 400 });
+    }
+
+    if (BLOCKED_FUNCTIONS.test(sql)) {
+      return NextResponse.json({ error: "File-access functions are not allowed" }, { status: 400 });
+    }
+
     await loadDashboard(id); // validate dashboard exists
 
     const results = await query<Record<string, unknown>>(sql);
@@ -25,6 +34,6 @@ export async function POST(
 
     return NextResponse.json({ results, columns, rowCount: results.length });
   } catch (error) {
-    return NextResponse.json({ error: String(error) }, { status: 500 });
+    return NextResponse.json({ error: safeErrorMessage(error) }, { status: 500 });
   }
 }

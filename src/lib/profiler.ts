@@ -1,5 +1,5 @@
 import { query } from "./duckdb";
-import { quoteLiteral } from "./sql-utils";
+import { quoteLiteral, quoteIdent } from "./sql-utils";
 
 export type ColumnType = "temporal" | "numeric" | "categorical" | "text" | "boolean";
 
@@ -31,7 +31,7 @@ export async function profileTable(tableName: string): Promise<TableProfile> {
   );
 
   const countResult = await query<{ cnt: number }>(
-    `SELECT COUNT(*) as cnt FROM "${tableName}"`
+    `SELECT COUNT(*) as cnt FROM ${quoteIdent(tableName)}`
   );
   const rowCount = countResult[0].cnt;
 
@@ -47,10 +47,10 @@ export async function profileTable(tableName: string): Promise<TableProfile> {
     // Get stats
     const stats = await query<Record<string, unknown>>(
       `SELECT
-        approx_count_distinct("${colName}") as distinct_count,
-        COUNT(*) - COUNT("${colName}") as null_count,
+        approx_count_distinct(${quoteIdent(colName)}) as distinct_count,
+        COUNT(*) - COUNT(${quoteIdent(colName)}) as null_count,
         COUNT(*) as total_count
-      FROM "${tableName}"`
+      FROM ${quoteIdent(tableName)}`
     );
 
     const distinctCount = Number(stats[0].distinct_count);
@@ -76,7 +76,7 @@ export async function profileTable(tableName: string): Promise<TableProfile> {
     // Get min/max/mean for numeric
     if (colType === "numeric") {
       const numStats = await query<Record<string, unknown>>(
-        `SELECT MIN("${colName}") as min_val, MAX("${colName}") as max_val, AVG("${colName}") as mean_val FROM "${tableName}"`
+        `SELECT MIN(${quoteIdent(colName)}) as min_val, MAX(${quoteIdent(colName)}) as max_val, AVG(${quoteIdent(colName)}) as mean_val FROM ${quoteIdent(tableName)}`
       );
       profile.min = Number(numStats[0].min_val);
       profile.max = Number(numStats[0].max_val);
@@ -86,7 +86,7 @@ export async function profileTable(tableName: string): Promise<TableProfile> {
     // Get min/max for temporal
     if (colType === "temporal") {
       const dateStats = await query<Record<string, unknown>>(
-        `SELECT MIN("${colName}")::VARCHAR as min_val, MAX("${colName}")::VARCHAR as max_val FROM "${tableName}"`
+        `SELECT MIN(${quoteIdent(colName)})::VARCHAR as min_val, MAX(${quoteIdent(colName)})::VARCHAR as max_val FROM ${quoteIdent(tableName)}`
       );
       profile.min = String(dateStats[0].min_val);
       profile.max = String(dateStats[0].max_val);
@@ -94,7 +94,7 @@ export async function profileTable(tableName: string): Promise<TableProfile> {
 
     // Sample values
     const samples = await query<Record<string, unknown>>(
-      `SELECT DISTINCT "${colName}"::VARCHAR as val FROM "${tableName}" WHERE "${colName}" IS NOT NULL LIMIT 5`
+      `SELECT DISTINCT ${quoteIdent(colName)}::VARCHAR as val FROM ${quoteIdent(tableName)} WHERE ${quoteIdent(colName)} IS NOT NULL LIMIT 5`
     );
     profile.sampleValues = samples.map((r) => String(r.val));
 

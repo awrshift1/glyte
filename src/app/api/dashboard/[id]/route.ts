@@ -3,6 +3,7 @@ import { query, dropTable } from "@/lib/duckdb";
 import { loadDashboard, buildSafeWhereClause, sanitizeDashboardId } from "@/lib/dashboard-loader";
 import { readFile, writeFile, unlink } from "fs/promises";
 import path from "path";
+import { safeErrorMessage } from "@/lib/sql-utils";
 import type { ChartData, KpiData, DashboardConfig } from "@/types/dashboard";
 
 export async function GET(
@@ -69,7 +70,7 @@ export async function GET(
     return NextResponse.json({ config, charts: chartResults });
   } catch (error) {
     return NextResponse.json(
-      { error: String(error) },
+      { error: safeErrorMessage(error) },
       { status: 500 }
     );
   }
@@ -93,7 +94,7 @@ export async function DELETE(
 
     return NextResponse.json({ deleted: true, id: safeId });
   } catch (error) {
-    return NextResponse.json({ error: String(error) }, { status: 500 });
+    return NextResponse.json({ error: safeErrorMessage(error) }, { status: 500 });
   }
 }
 
@@ -131,7 +132,7 @@ export async function PATCH(
 
     return NextResponse.json({ ok: true, config });
   } catch (error) {
-    return NextResponse.json({ error: String(error) }, { status: 500 });
+    return NextResponse.json({ error: safeErrorMessage(error) }, { status: 500 });
   }
 }
 

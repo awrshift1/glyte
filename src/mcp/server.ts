@@ -15,6 +15,7 @@ import {
   formatDashboardSummary,
   formatDashboardDetails,
 } from "./tools";
+import { BLOCKED_SQL, BLOCKED_FUNCTIONS } from "../lib/sql-utils";
 
 const BASE_URL = process.env.GLYTE_URL || "http://localhost:3000";
 const DATA_DIR = process.env.GLYTE_DATA_DIR || path.join(process.cwd(), "data", "dashboards");
@@ -99,6 +100,12 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       const { dashboardId, sql } = args as { dashboardId: string; sql: string };
       if (!/^\s*SELECT\b/i.test(sql)) {
         return formatError("Only SELECT queries are allowed");
+      }
+      if (BLOCKED_SQL.test(sql)) {
+        return formatError("Query contains blocked keywords");
+      }
+      if (BLOCKED_FUNCTIONS.test(sql)) {
+        return formatError("File-access functions are not allowed");
       }
       try {
         const result = await queryViaApi(dashboardId, sql);

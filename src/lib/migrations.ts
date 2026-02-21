@@ -103,12 +103,19 @@ export async function runMigrations(db: DuckDBInstance): Promise<void> {
 
     for (const migration of migrations) {
       if (migration.version > currentVersion) {
-        for (const sql of migration.sql) {
-          await conn.run(sql);
+        await conn.run("BEGIN TRANSACTION");
+        try {
+          for (const sql of migration.sql) {
+            await conn.run(sql);
+          }
+          await conn.run(
+            `UPDATE _glyte_meta SET value = '${migration.version}' WHERE key = 'schema_version'`
+          );
+          await conn.run("COMMIT");
+        } catch (e) {
+          await conn.run("ROLLBACK");
+          throw e;
         }
-        await conn.run(
-          `UPDATE _glyte_meta SET value = '${migration.version}' WHERE key = 'schema_version'`
-        );
       }
     }
   } finally {

@@ -6,6 +6,17 @@ const ALLOWED_DATA_DIRS = [
 ];
 
 /**
+ * Regex to block dangerous SQL keywords.
+ * Used by query endpoints to prevent data modification and file access.
+ */
+export const BLOCKED_SQL = /\b(INSERT|UPDATE|DELETE|DROP|CREATE|ALTER|TRUNCATE|EXEC|EXECUTE|GRANT|REVOKE|INTO\s+OUTFILE|LOAD|COPY|ATTACH|DETACH|INSTALL|PRAGMA)\b/i;
+
+/**
+ * Regex to block DuckDB file-access functions that could read server files.
+ */
+export const BLOCKED_FUNCTIONS = /\b(read_csv_auto|read_csv|read_parquet|read_json_auto|read_json|read_text|read_blob)\s*\(/i;
+
+/**
  * Quote a SQL identifier (table/column name) safely.
  * Escapes embedded double-quotes by doubling them.
  * "my_table" → "my_table", 'my"table' → "my""table"

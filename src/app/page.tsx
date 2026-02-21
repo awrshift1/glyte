@@ -37,7 +37,7 @@ export default function Home() {
     fetch("/api/dashboards")
       .then((r) => r.json())
       .then((d) => setRecentDashboards((d.dashboards || []).slice(0, 5)))
-      .catch(() => {});
+      .catch((e) => { console.error("Failed to fetch recent dashboards:", e); });
   }, []);
 
   const handleUpload = useCallback(
@@ -174,7 +174,8 @@ export default function Home() {
         });
         setColumnSelectState(null);
         router.push(`/dashboard/${columnSelectState.dashboardId}`);
-      } catch {
+      } catch (e) {
+        console.error("Failed to save column exclusions:", e);
         setColumnSelectState(null);
         router.push(`/dashboard/${columnSelectState.dashboardId}`);
       } finally {

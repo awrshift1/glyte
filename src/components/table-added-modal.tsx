@@ -102,9 +102,14 @@ export function TableAddedModal({
                   {schemaMatch.overlapPercent}% columns match primary table
                 </span>
               </div>
+              {schemaMatch.columnMapping && Object.keys(schemaMatch.columnMapping).length > 0 && (
+                <p className="text-[10px] text-[#22c55e]/70 mb-1">
+                  Mapped: {Object.entries(schemaMatch.columnMapping).map(([s, t]) => `${s} \u2192 ${t}`).join(", ")}
+                </p>
+              )}
               {schemaMatch.missingInTarget.length > 0 && (
                 <p className="text-[10px] text-[#64748b] mb-3">
-                  Missing: {schemaMatch.missingInTarget.join(", ")} (filled with NULL)
+                  Unmapped: {schemaMatch.missingInTarget.join(", ")} (filled with NULL)
                 </p>
               )}
               <div className="flex gap-2">

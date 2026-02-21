@@ -1,5 +1,6 @@
 import type { TableProfile, ColumnProfile } from "./profiler";
 import type { DashboardConfig } from "@/types/dashboard";
+import { quoteIdent } from "./sql-utils";
 
 export function buildSystemPrompt(config: DashboardConfig, profile: TableProfile): string {
   const excluded = new Set(config.excludedColumns ?? []);
@@ -79,13 +80,13 @@ function generateCommonMetrics(profile: TableProfile): string {
   const categoricals = profile.columns.filter((c) => c.type === "categorical");
 
   for (const col of numerics) {
-    lines.push(`  Total ${col.name}: SUM("${col.name}")`);
-    lines.push(`  Average ${col.name}: ROUND(AVG("${col.name}"), 2)`);
+    lines.push(`  Total ${col.name}: SUM(${quoteIdent(col.name)})`);
+    lines.push(`  Average ${col.name}: ROUND(AVG(${quoteIdent(col.name)}), 2)`);
   }
 
   for (const cat of categoricals) {
     if (numerics.length > 0) {
-      lines.push(`  ${numerics[0].name} by ${cat.name}: SUM("${numerics[0].name}") ... GROUP BY "${cat.name}"`);
+      lines.push(`  ${numerics[0].name} by ${cat.name}: SUM(${quoteIdent(numerics[0].name)}) ... GROUP BY ${quoteIdent(cat.name)}`);
     }
   }
 
@@ -99,7 +100,7 @@ function generateExamples(profile: TableProfile): string {
   // Always: total count
   examples.push({
     q: "How many records?",
-    sql: `SELECT COUNT(*) as total_records FROM "${table}"`,
+    sql: `SELECT COUNT(*) as total_records FROM ${quoteIdent(table)}`,
   });
 
   // Categorical breakdown
@@ -109,7 +110,7 @@ function generateExamples(profile: TableProfile): string {
   if (cat && num) {
     examples.push({
       q: `${num.name} by ${cat.name}`,
-      sql: `SELECT "${cat.name}", SUM("${num.name}") as total_${num.name.toLowerCase().replace(/\s/g, "_")} FROM "${table}" GROUP BY "${cat.name}" ORDER BY total_${num.name.toLowerCase().replace(/\s/g, "_")} DESC`,
+      sql: `SELECT ${quoteIdent(cat.name)}, SUM(${quoteIdent(num.name)}) as total_${num.name.toLowerCase().replace(/\s/g, "_")} FROM ${quoteIdent(table)} GROUP BY ${quoteIdent(cat.name)} ORDER BY total_${num.name.toLowerCase().replace(/\s/g, "_")} DESC`,
     });
   }
 
@@ -118,7 +119,7 @@ function generateExamples(profile: TableProfile): string {
   if (temporal && num) {
     examples.push({
       q: `${num.name} over time`,
-      sql: `SELECT strftime("${temporal.name}"::DATE, '%Y-%m') as month, SUM("${num.name}") as total FROM "${table}" GROUP BY month ORDER BY month`,
+      sql: `SELECT strftime(${quoteIdent(temporal.name)}::DATE, '%Y-%m') as month, SUM(${quoteIdent(num.name)}) as total FROM ${quoteIdent(table)} GROUP BY month ORDER BY month`,
     });
   }
 
@@ -126,7 +127,7 @@ function generateExamples(profile: TableProfile): string {
   if (cat) {
     examples.push({
       q: `Top 5 ${cat.name}`,
-      sql: `SELECT "${cat.name}", COUNT(*) as count FROM "${table}" GROUP BY "${cat.name}" ORDER BY count DESC LIMIT 5`,
+      sql: `SELECT ${quoteIdent(cat.name)}, COUNT(*) as count FROM ${quoteIdent(table)} GROUP BY ${quoteIdent(cat.name)} ORDER BY count DESC LIMIT 5`,
     });
   }
 
@@ -197,21 +198,21 @@ Available tiers:
 - iGaming: Casino/Betting Directors (context-dependent)
 - Board: Low priority (Chairman, Board Member)
 
-IMPORTANT: Use the "${tableName}_enriched" view instead of "${tableName}" for ICP-aware queries.
+IMPORTANT: Use the ${quoteIdent(tableName + "_enriched")} view instead of ${quoteIdent(tableName)} for ICP-aware queries.
 The enriched view includes an "icp_tier" column.
 
 Example queries:
 Q: How many ICP contacts?
-SQL: SELECT COUNT(*) as icp_contacts FROM "${tableName}_enriched" WHERE icp_tier IS NOT NULL
+SQL: SELECT COUNT(*) as icp_contacts FROM ${quoteIdent(tableName + "_enriched")} WHERE icp_tier IS NOT NULL
 
 Q: Tier breakdown
-SQL: SELECT icp_tier, COUNT(*) as count FROM "${tableName}_enriched" WHERE icp_tier IS NOT NULL GROUP BY icp_tier ORDER BY count DESC
+SQL: SELECT icp_tier, COUNT(*) as count FROM ${quoteIdent(tableName + "_enriched")} WHERE icp_tier IS NOT NULL GROUP BY icp_tier ORDER BY count DESC
 
 Q: ICP contacts with email
-SQL: SELECT COUNT(*) as ready_for_outreach FROM "${tableName}_enriched" WHERE icp_tier IS NOT NULL AND email IS NOT NULL AND email != ''
+SQL: SELECT COUNT(*) as ready_for_outreach FROM ${quoteIdent(tableName + "_enriched")} WHERE icp_tier IS NOT NULL AND email IS NOT NULL AND email != ''
 
 Q: Top companies by Tier 1
-SQL: SELECT "companyName", COUNT(*) as count FROM "${tableName}_enriched" WHERE icp_tier = 'Tier 1' GROUP BY "companyName" ORDER BY count DESC LIMIT 10
+SQL: SELECT "companyName", COUNT(*) as count FROM ${quoteIdent(tableName + "_enriched")} WHERE icp_tier = 'Tier 1' GROUP BY "companyName" ORDER BY count DESC LIMIT 10
 `;
 }
 

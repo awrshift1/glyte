@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
+import { formatTitle } from "@/lib/format-utils";
 import type { ColumnProfile } from "@/lib/profiler";
 
 // Client-side mirror of isIdentifier from contact-pipeline.ts:18-29
@@ -21,13 +22,6 @@ function isDimension(col: ColumnProfile, rowCount: number): boolean {
   const nonNull = col.totalCount - col.nullCount;
   if (nonNull > 0 && nonNull < rowCount * 0.1) return false;
   return true;
-}
-
-function formatTitle(name: string): string {
-  return name
-    .replace(/_/g, " ")
-    .replace(/([a-z])([A-Z])/g, "$1 $2")
-    .replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 interface DimensionPillsProps {

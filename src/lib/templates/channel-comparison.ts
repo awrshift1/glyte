@@ -1,6 +1,7 @@
 import type { TableProfile } from "@/lib/profiler";
 import type { DashboardTemplate, TemplateMatch } from "./index";
 import type { ChartRecommendation } from "@/lib/chart-recommender";
+import { quoteIdent } from "@/lib/sql-utils";
 
 const CHANNEL_COLS = /^(channel|source|medium|campaign|utm.?source|utm.?medium|platform|ad.?group)$/i;
 
@@ -46,7 +47,7 @@ export const matchChannelComparison: DashboardTemplate = {
     for (const num of numerics.slice(0, 4)) {
       charts.push({
         id: nextId(), type: "kpi", title: `Total ${formatTitle(num.name)}`,
-        query: `SELECT SUM("${num.name}") as value FROM "${table}"`,
+        query: `SELECT SUM(${quoteIdent(num.name)}) as value FROM ${quoteIdent(table)}`,
         width: 3, confidence: 0.85, reason: `Aggregate "${num.name}"`,
       });
     }
@@ -56,7 +57,7 @@ export const matchChannelComparison: DashboardTemplate = {
       charts.push({
         id: nextId(), type: "horizontal-bar",
         title: `${formatTitle(numerics[0].name)} by ${formatTitle(channelCol.name)}`,
-        query: `SELECT "${channelCol.name}", SUM("${numerics[0].name}") as "${numerics[0].name}" FROM "${table}" GROUP BY "${channelCol.name}" ORDER BY SUM("${numerics[0].name}") DESC`,
+        query: `SELECT ${quoteIdent(channelCol.name)}, SUM(${quoteIdent(numerics[0].name)}) as ${quoteIdent(numerics[0].name)} FROM ${quoteIdent(table)} GROUP BY ${quoteIdent(channelCol.name)} ORDER BY SUM(${quoteIdent(numerics[0].name)}) DESC`,
         xColumn: channelCol.name, yColumns: [numerics[0].name],
         width: 6, confidence: 0.9, reason: `Primary metric by channel`,
       });
@@ -66,7 +67,7 @@ export const matchChannelComparison: DashboardTemplate = {
     charts.push({
       id: nextId(), type: "donut",
       title: `${formatTitle(channelCol.name)} Distribution`,
-      query: `SELECT "${channelCol.name}", COUNT(*) as "Count" FROM "${table}" WHERE "${channelCol.name}" IS NOT NULL GROUP BY "${channelCol.name}" ORDER BY COUNT(*) DESC`,
+      query: `SELECT ${quoteIdent(channelCol.name)}, COUNT(*) as "Count" FROM ${quoteIdent(table)} WHERE ${quoteIdent(channelCol.name)} IS NOT NULL GROUP BY ${quoteIdent(channelCol.name)} ORDER BY COUNT(*) DESC`,
       xColumn: channelCol.name, yColumns: ["Count"],
       width: 6, confidence: 0.8, reason: `Channel proportions`,
     });
@@ -76,7 +77,7 @@ export const matchChannelComparison: DashboardTemplate = {
       charts.push({
         id: nextId(), type: "bar",
         title: `${formatTitle(numerics[1].name)} by ${formatTitle(channelCol.name)}`,
-        query: `SELECT "${channelCol.name}", SUM("${numerics[1].name}") as "${numerics[1].name}" FROM "${table}" GROUP BY "${channelCol.name}" ORDER BY SUM("${numerics[1].name}") DESC`,
+        query: `SELECT ${quoteIdent(channelCol.name)}, SUM(${quoteIdent(numerics[1].name)}) as ${quoteIdent(numerics[1].name)} FROM ${quoteIdent(table)} GROUP BY ${quoteIdent(channelCol.name)} ORDER BY SUM(${quoteIdent(numerics[1].name)}) DESC`,
         xColumn: channelCol.name, yColumns: [numerics[1].name],
         width: 6, confidence: 0.75, reason: `Secondary metric by channel`,
       });
@@ -88,7 +89,7 @@ export const matchChannelComparison: DashboardTemplate = {
       charts.push({
         id: nextId(), type: "line",
         title: `${formatTitle(numerics[0].name)} Over Time`,
-        query: `SELECT "${temporal.name}", SUM("${numerics[0].name}") as "${numerics[0].name}" FROM "${table}" GROUP BY "${temporal.name}" ORDER BY "${temporal.name}"`,
+        query: `SELECT ${quoteIdent(temporal.name)}, SUM(${quoteIdent(numerics[0].name)}) as ${quoteIdent(numerics[0].name)} FROM ${quoteIdent(table)} GROUP BY ${quoteIdent(temporal.name)} ORDER BY ${quoteIdent(temporal.name)}`,
         xColumn: temporal.name, yColumns: [numerics[0].name],
         width: 6, confidence: 0.85, reason: `Temporal trend of primary metric`,
       });
@@ -96,7 +97,7 @@ export const matchChannelComparison: DashboardTemplate = {
 
     charts.push({
       id: nextId(), type: "table", title: `${formatTitle(table)} Details`,
-      query: `SELECT * FROM "${table}" LIMIT 50`, width: 12,
+      query: `SELECT * FROM ${quoteIdent(table)} LIMIT 50`, width: 12,
       confidence: 0.7, reason: `Channel data preview (first 50 rows)`,
     });
 

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { query } from "@/lib/duckdb";
 import { loadDashboard } from "@/lib/dashboard-loader";
+import { safeErrorMessage } from "@/lib/sql-utils";
 
 export async function GET(
   request: NextRequest,
@@ -10,9 +11,14 @@ export async function GET(
     const { id } = await params;
     const config = await loadDashboard(id);
 
-    const results = await query<Record<string, unknown>>(
-      `SELECT * FROM "${config.tableName}"`
-    );
+    // Safety limit to prevent OOM on large datasets
+    const MAX_EXPORT_ROWS = 100_000;
+    let sql = `SELECT * FROM "${config.tableName}"`;
+    if (!/\bLIMIT\b/i.test(sql)) {
+      sql = `${sql} LIMIT ${MAX_EXPORT_ROWS}`;
+    }
+
+    const results = await query<Record<string, unknown>>(sql);
 
     if (results.length === 0) {
       return new NextResponse("No data", { status: 404 });
@@ -45,6 +51,6 @@ export async function GET(
       },
     });
   } catch (error) {
-    return NextResponse.json({ error: String(error) }, { status: 500 });
+    return NextResponse.json({ error: safeErrorMessage(error) }, { status: 500 });
   }
 }

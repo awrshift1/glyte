@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { AutoChart } from "@/components/auto-chart";
 import { useFilterStore } from "@/store/filters";
+import { formatTitle } from "@/lib/format-utils";
 import type { ColumnProfile } from "@/lib/profiler";
 import type { ChartData } from "@/types/dashboard";
 
@@ -14,13 +15,6 @@ function quoteIdent(name: string): string {
 
 function quoteLiteral(value: string): string {
   return `'${value.replace(/'/g, "''")}'`;
-}
-
-function formatTitle(name: string): string {
-  return name
-    .replace(/_/g, " ")
-    .replace(/([a-z])([A-Z])/g, "$1 $2")
-    .replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 interface DimensionChartProps {
