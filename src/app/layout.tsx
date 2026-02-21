@@ -11,8 +11,14 @@ const manrope = Manrope({
 });
 
 export const metadata: Metadata = {
-  title: "Glyte — Analytics Dashboard",
-  description: "Upload CSV, get instant analytics dashboard",
+  title: "Glyte — CSV Analytics Dashboard",
+  description: "Upload CSV, get instant analytics. Open source.",
+  icons: { icon: "/favicon.svg" },
+  openGraph: {
+    title: "Glyte — CSV Analytics Dashboard",
+    description: "Upload CSV, get instant analytics. Open source.",
+    type: "website",
+  },
 };
 
 export default function RootLayout({

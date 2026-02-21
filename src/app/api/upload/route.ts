@@ -17,6 +17,25 @@ export async function POST(request: NextRequest) {
     const replaceId = formData.get("replaceId") as string | null;
     const tempPath = formData.get("tempPath") as string | null;
 
+    // Validate uploaded file
+    if (file) {
+      const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
+      if (file.size > MAX_FILE_SIZE) {
+        return NextResponse.json(
+          { error: "File too large. Maximum size is 50MB." },
+          { status: 413 }
+        );
+      }
+      const ext = path.extname(file.name).toLowerCase();
+      const ALLOWED_EXTENSIONS = [".csv", ".tsv", ".xlsx", ".xls"];
+      if (!ALLOWED_EXTENSIONS.includes(ext)) {
+        return NextResponse.json(
+          { error: `Unsupported file type: ${ext}. Use CSV, TSV, or Excel.` },
+          { status: 400 }
+        );
+      }
+    }
+
     // Determine file path — either from pre-uploaded temp or new upload
     let filePath: string;
 

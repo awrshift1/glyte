@@ -50,6 +50,21 @@ export async function POST(
       if (!file) {
         return NextResponse.json({ error: "No file provided" }, { status: 400 });
       }
+      const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
+      if (file.size > MAX_FILE_SIZE) {
+        return NextResponse.json(
+          { error: "File too large. Maximum size is 50MB." },
+          { status: 413 }
+        );
+      }
+      const fileExt = path.extname(file.name).toLowerCase();
+      const ALLOWED_EXTENSIONS = [".csv", ".tsv", ".xlsx", ".xls"];
+      if (!ALLOWED_EXTENSIONS.includes(fileExt)) {
+        return NextResponse.json(
+          { error: `Unsupported file type: ${fileExt}. Use CSV, TSV, or Excel.` },
+          { status: 400 }
+        );
+      }
 
       await mkdir(UPLOADS_DIR, { recursive: true });
       const safeFilename = safeUploadFilename(file.name);

@@ -70,9 +70,10 @@ export async function GET(
 
     return NextResponse.json({ config, charts: chartResults });
   } catch (error) {
+    const status = error instanceof Error && "code" in error && (error as NodeJS.ErrnoException).code === "NOT_FOUND" ? 404 : 500;
     return NextResponse.json(
       { error: safeErrorMessage(error) },
-      { status: 500 }
+      { status }
     );
   }
 }
@@ -95,7 +96,8 @@ export async function DELETE(
 
     return NextResponse.json({ deleted: true, id: safeId });
   } catch (error) {
-    return NextResponse.json({ error: safeErrorMessage(error) }, { status: 500 });
+    const status = error instanceof Error && "code" in error && (error as NodeJS.ErrnoException).code === "NOT_FOUND" ? 404 : 500;
+    return NextResponse.json({ error: safeErrorMessage(error) }, { status });
   }
 }
 
@@ -133,7 +135,8 @@ export async function PATCH(
 
     return NextResponse.json({ ok: true, config });
   } catch (error) {
-    return NextResponse.json({ error: safeErrorMessage(error) }, { status: 500 });
+    const status = error instanceof Error && "code" in error && (error as NodeJS.ErrnoException).code === "NOT_FOUND" ? 404 : 500;
+    return NextResponse.json({ error: safeErrorMessage(error) }, { status });
   }
 }
 

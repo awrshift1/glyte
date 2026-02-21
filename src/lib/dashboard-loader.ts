@@ -74,7 +74,17 @@ export function buildSafeWhereClause(
 export async function loadDashboard(id: string): Promise<DashboardConfig> {
   const safeId = sanitizeDashboardId(id);
   const configPath = path.join(DASHBOARDS_DIR, `${safeId}.json`);
-  const configJson = await readFile(configPath, "utf-8");
+  let configJson: string;
+  try {
+    configJson = await readFile(configPath, "utf-8");
+  } catch (err: unknown) {
+    if (err instanceof Error && "code" in err && (err as NodeJS.ErrnoException).code === "ENOENT") {
+      const notFound = new Error(`Dashboard "${id}" not found`);
+      (notFound as NodeJS.ErrnoException).code = "NOT_FOUND";
+      throw notFound;
+    }
+    throw err;
+  }
   const config: DashboardConfig = JSON.parse(configJson);
 
   // Ensure primary table

@@ -157,7 +157,7 @@ describe("API Routes Integration", () => {
       params: Promise.resolve({ id: dashboardId }),
     });
 
-    expect(getRes.status).toBe(500);
+    expect(getRes.status).toBe(404);
   });
 
   // Test 5: Tables add/remove
