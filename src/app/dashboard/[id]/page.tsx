@@ -14,7 +14,6 @@ import { TableAddedModal } from "@/components/table-added-modal";
 import { TableManager } from "@/components/table-manager";
 import type { SuggestionWithId } from "@/components/table-added-modal";
 import { ExistingTablePicker } from "@/components/existing-table-picker";
-import { LeadGenSection } from "@/components/lead-gen-section";
 import { ChartGrid } from "@/components/chart-grid";
 import { DimensionPills } from "@/components/dimension-pills";
 import { DimensionChart } from "@/components/dimension-chart";
@@ -59,7 +58,6 @@ function DashboardContent() {
   const [addingTable, setAddingTable] = useState(false);
   const [showExistingPicker, setShowExistingPicker] = useState(false);
   const addTableRef = useRef<HTMLInputElement>(null);
-  const [leadGenMode, setLeadGenMode] = useState(false);
 
   const starterQuestions = useMemo(
     () => data?.config.profile ? generateStarterQuestions(data.config.profile) : undefined,
@@ -95,7 +93,6 @@ function DashboardContent() {
       const d = await res.json();
       if (d.error) throw new Error(d.error);
       setData(d);
-      if (d.config?.leadGenMode) setLeadGenMode(true);
       setError(null);
     } catch (err) {
       setError(String(err));
@@ -120,21 +117,6 @@ function DashboardContent() {
       setDeleting(false);
     }
   }, [id, router]);
-
-  const handleToggleLeadGen = useCallback(async () => {
-    const newMode = !leadGenMode;
-    try {
-      await fetch(`/api/dashboard/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ leadGenMode: newMode }),
-      });
-      setLeadGenMode(newMode);
-      fetchDashboard();
-    } catch (err) {
-      setError(String(err));
-    }
-  }, [id, leadGenMode, fetchDashboard]);
 
   const handleAddTable = useCallback(async (file: File) => {
     setAddingTable(true);
@@ -406,14 +388,6 @@ function DashboardContent() {
                 {tableCount} tables
               </button>
             )}
-            {leadGenMode && (
-              <button
-                onClick={handleToggleLeadGen}
-                className="flex-shrink-0 text-[11px] bg-[#22c55e]/10 border border-[#22c55e]/30 rounded-full px-2.5 py-1 text-[#22c55e] hover:bg-[#22c55e]/20 transition-colors"
-              >
-                Lead Gen ✕
-              </button>
-            )}
           </div>
 
           {temporalCol && (
@@ -437,17 +411,6 @@ function DashboardContent() {
         </header>
 
         <FilterBar />
-
-        {/* Lead Gen Section (isolated re-render boundary) */}
-        <LeadGenSection
-          dashboardId={id}
-          tableName={config.tableName}
-          profile={config.profile}
-          leadGenMode={leadGenMode}
-          onModeChange={setLeadGenMode}
-          onError={setError}
-          onRefresh={fetchDashboard}
-        />
 
         {/* KPI Row */}
         {kpis.length > 0 && (

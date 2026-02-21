@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
 import { readdir, readFile } from "fs/promises";
 import path from "path";
+import { DASHBOARDS_DIR } from "@/lib/paths";
 import type { DashboardConfig } from "@/types/dashboard";
 
 export async function GET() {
   try {
-    const configDir = path.join(process.cwd(), "data", "dashboards");
+    const configDir = DASHBOARDS_DIR;
     let files: string[];
     try {
       files = await readdir(configDir);

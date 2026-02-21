@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { readdir, readFile } from "fs/promises";
 import path from "path";
+import { DASHBOARDS_DIR } from "@/lib/paths";
 import type { DashboardConfig } from "@/types/dashboard";
-
-const DASHBOARDS_DIR = path.join(process.cwd(), "data", "dashboards");
 
 export async function GET(request: NextRequest) {
   try {

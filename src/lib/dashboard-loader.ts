@@ -6,8 +6,7 @@ import { profileTable } from "./profiler";
 import fs from "fs";
 import { recommendCharts } from "./chart-recommender";
 import type { DashboardConfig } from "@/types/dashboard";
-
-const DASHBOARDS_DIR = path.join(process.cwd(), "data", "dashboards");
+import { DASHBOARDS_DIR } from "./paths";
 
 /**
  * Task #10: Sanitize dashboard ID to prevent path traversal.

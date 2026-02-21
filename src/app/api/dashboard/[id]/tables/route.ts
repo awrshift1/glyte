@@ -1,12 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { writeFile, mkdir, readFile } from "fs/promises";
 import path from "path";
+import { DASHBOARDS_DIR, UPLOADS_DIR } from "@/lib/paths";
 import { ingestCsv, dropTable, schemaCompatibility } from "@/lib/duckdb";
 import { sanitizeDashboardId, safeUploadFilename } from "@/lib/dashboard-loader";
 import { safeCsvPath, safeErrorMessage } from "@/lib/sql-utils";
 import type { DashboardConfig, TableEntry } from "@/types/dashboard";
-
-const DASHBOARDS_DIR = path.join(process.cwd(), "data", "dashboards");
 
 export async function POST(
   request: NextRequest,
@@ -52,10 +51,9 @@ export async function POST(
         return NextResponse.json({ error: "No file provided" }, { status: 400 });
       }
 
-      const uploadDir = path.join(process.cwd(), "data", "uploads");
-      await mkdir(uploadDir, { recursive: true });
+      await mkdir(UPLOADS_DIR, { recursive: true });
       const safeFilename = safeUploadFilename(file.name);
-      filePath = path.join(uploadDir, safeFilename);
+      filePath = path.join(UPLOADS_DIR, safeFilename);
       const bytes = await file.arrayBuffer();
       await writeFile(filePath, Buffer.from(bytes));
 

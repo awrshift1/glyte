@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { writeFile, mkdir, readFile } from "fs/promises";
 import path from "path";
 import fs from "fs";
+import { UPLOADS_DIR, DASHBOARDS_DIR } from "@/lib/paths";
 import { ingestCsv } from "@/lib/duckdb";
 import { profileTable } from "@/lib/profiler";
 import { safeUploadFilename, sanitizeDashboardId } from "@/lib/dashboard-loader";
@@ -26,10 +27,9 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: "Temp file not found" }, { status: 400 });
       }
     } else if (file) {
-      const uploadDir = path.join(process.cwd(), "data", "uploads");
-      await mkdir(uploadDir, { recursive: true });
+      await mkdir(UPLOADS_DIR, { recursive: true });
       const safeFilename = safeUploadFilename(file.name);
-      filePath = path.join(uploadDir, safeFilename);
+      filePath = path.join(UPLOADS_DIR, safeFilename);
       const bytes = await file.arrayBuffer();
       await writeFile(filePath, Buffer.from(bytes));
     } else {
@@ -57,8 +57,7 @@ export async function POST(request: NextRequest) {
     // Replace flow: update existing dashboard config
     if (replaceId) {
       const safeId = sanitizeDashboardId(replaceId);
-      const configDir = path.join(process.cwd(), "data", "dashboards");
-      const configPath = path.join(configDir, `${safeId}.json`);
+      const configPath = path.join(DASHBOARDS_DIR, `${safeId}.json`);
 
       if (fs.existsSync(configPath)) {
         const existingConfig: DashboardConfig = JSON.parse(
@@ -120,10 +119,9 @@ export async function POST(request: NextRequest) {
       templateId: selection.template.id,
     };
 
-    const configDir = path.join(process.cwd(), "data", "dashboards");
-    await mkdir(configDir, { recursive: true });
+    await mkdir(DASHBOARDS_DIR, { recursive: true });
     await writeFile(
-      path.join(configDir, `${config.id}.json`),
+      path.join(DASHBOARDS_DIR, `${config.id}.json`),
       JSON.stringify(config, null, 2)
     );
 

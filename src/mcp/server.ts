@@ -16,9 +16,10 @@ import {
   formatDashboardDetails,
 } from "./tools";
 import { BLOCKED_SQL, BLOCKED_FUNCTIONS } from "../lib/sql-utils";
+import { DASHBOARDS_DIR } from "../lib/paths";
 
 const BASE_URL = process.env.GLYTE_URL || "http://localhost:3000";
-const DATA_DIR = process.env.GLYTE_DATA_DIR || path.join(process.cwd(), "data", "dashboards");
+const DATA_DIR = process.env.GLYTE_DATA_DIR || DASHBOARDS_DIR;
 
 async function loadDashboards(): Promise<DashboardConfig[]> {
   try {

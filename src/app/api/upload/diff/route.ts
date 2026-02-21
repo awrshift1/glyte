@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
+import { UPLOADS_DIR } from "@/lib/paths";
 import { safeUploadFilename } from "@/lib/dashboard-loader";
 import { findMatchingDashboard } from "@/lib/data-differ";
 
@@ -14,10 +15,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Save to temp location for diffing
-    const uploadDir = path.join(process.cwd(), "data", "uploads");
-    await mkdir(uploadDir, { recursive: true });
+    await mkdir(UPLOADS_DIR, { recursive: true });
     const safeFilename = safeUploadFilename(file.name);
-    const filePath = path.join(uploadDir, safeFilename);
+    const filePath = path.join(UPLOADS_DIR, safeFilename);
     const bytes = await file.arrayBuffer();
     await writeFile(filePath, Buffer.from(bytes));
 

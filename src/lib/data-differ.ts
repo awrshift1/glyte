@@ -4,8 +4,7 @@ import type { DiffSummary, DashboardConfig } from "@/types/dashboard";
 import { readFile } from "fs/promises";
 import fs from "fs";
 import { quoteIdent, quoteLiteral, safeCsvPath } from "./sql-utils";
-
-const DASHBOARDS_DIR = path.join(process.cwd(), "data", "dashboards");
+import { DASHBOARDS_DIR } from "./paths";
 
 /**
  * Diff a new CSV against an existing table in DuckDB.

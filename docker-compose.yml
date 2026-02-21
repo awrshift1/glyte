@@ -1,0 +1,12 @@
+services:
+  glyte:
+    build: .
+    ports:
+      - "3000:3000"
+    volumes:
+      - glyte-data:/data
+    environment:
+      - DATA_DIR=/data
+
+volumes:
+  glyte-data:

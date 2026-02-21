@@ -1,13 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { readFile, writeFile } from "fs/promises";
 import path from "path";
+import { DASHBOARDS_DIR } from "@/lib/paths";
 import { appendCsv, backfillSource, dropTable } from "@/lib/duckdb";
 import { profileTable } from "@/lib/profiler";
 import { selectTemplate } from "@/lib/templates";
 import { sanitizeDashboardId } from "@/lib/dashboard-loader";
 import type { DashboardConfig, AppendedSource } from "@/types/dashboard";
-
-const DASHBOARDS_DIR = path.join(process.cwd(), "data", "dashboards");
 
 export async function POST(
   request: NextRequest,

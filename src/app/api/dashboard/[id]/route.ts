@@ -3,6 +3,7 @@ import { query, dropTable } from "@/lib/duckdb";
 import { loadDashboard, buildSafeWhereClause, sanitizeDashboardId } from "@/lib/dashboard-loader";
 import { readFile, writeFile, unlink } from "fs/promises";
 import path from "path";
+import { DASHBOARDS_DIR } from "@/lib/paths";
 import { safeErrorMessage } from "@/lib/sql-utils";
 import type { ChartData, KpiData, DashboardConfig } from "@/types/dashboard";
 
@@ -89,7 +90,7 @@ export async function DELETE(
     await dropTable(config.tableName);
 
     // Delete config JSON
-    const configPath = path.join(process.cwd(), "data", "dashboards", `${safeId}.json`);
+    const configPath = path.join(DASHBOARDS_DIR, `${safeId}.json`);
     await unlink(configPath).catch(() => {});
 
     return NextResponse.json({ deleted: true, id: safeId });
@@ -113,7 +114,7 @@ export async function PATCH(
   try {
     const { id } = await params;
     const safeId = sanitizeDashboardId(id);
-    const configPath = path.join(process.cwd(), "data", "dashboards", `${safeId}.json`);
+    const configPath = path.join(DASHBOARDS_DIR, `${safeId}.json`);
     const raw = await readFile(configPath, "utf-8");
     const config: DashboardConfig = JSON.parse(raw);
 

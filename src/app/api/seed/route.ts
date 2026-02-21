@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
+import { UPLOADS_DIR, DASHBOARDS_DIR } from "@/lib/paths";
 import { ingestCsv } from "@/lib/duckdb";
 import { profileTable } from "@/lib/profiler";
 import { recommendCharts } from "@/lib/chart-recommender";
@@ -56,9 +57,8 @@ const SAMPLE_CSV = `Date,Campaign,Channel,Leads,Sent,Replies,Meetings,Spend,Reve
 
 export async function POST() {
   try {
-    const uploadDir = path.join(process.cwd(), "data", "uploads");
-    await mkdir(uploadDir, { recursive: true });
-    const filePath = path.join(uploadDir, "sample-marketing-data.csv");
+    await mkdir(UPLOADS_DIR, { recursive: true });
+    const filePath = path.join(UPLOADS_DIR, "sample-marketing-data.csv");
     await writeFile(filePath, SAMPLE_CSV);
 
     const tableName = "sample_marketing_data";
@@ -79,10 +79,9 @@ export async function POST() {
       createdAt: new Date().toISOString(),
     };
 
-    const configDir = path.join(process.cwd(), "data", "dashboards");
-    await mkdir(configDir, { recursive: true });
+    await mkdir(DASHBOARDS_DIR, { recursive: true });
     await writeFile(
-      path.join(configDir, `${config.id}.json`),
+      path.join(DASHBOARDS_DIR, `${config.id}.json`),
       JSON.stringify(config, null, 2)
     );
 

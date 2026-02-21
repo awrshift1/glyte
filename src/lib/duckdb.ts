@@ -4,15 +4,20 @@ import fs from "fs";
 import { runMigrations } from "./migrations";
 import { quoteIdent, quoteLiteral, safeCsvPath } from "./sql-utils";
 import type { SchemaCompatibility } from "@/types/dashboard";
+import { DB_PATH } from "./paths";
 
-const DB_PATH = path.join(process.cwd(), "data", "glyte.duckdb");
 const POOL_SIZE = 5;
 
 // Survive Next.js hot reload — attach to globalThis
 const globalState = globalThis as unknown as {
   __glyte_db?: DuckDBInstance;
   __glyte_pool?: DuckDBConnection[];
+  __glyte_active_connections?: number;
 };
+
+if (globalState.__glyte_active_connections === undefined) {
+  globalState.__glyte_active_connections = 0;
+}
 
 async function getInstance(): Promise<DuckDBInstance> {
   if (globalState.__glyte_db) return globalState.__glyte_db;
@@ -43,17 +48,16 @@ async function getInstance(): Promise<DuckDBInstance> {
 
 // Connection pool — reuse connections instead of create/destroy per query
 const MAX_CONNECTIONS = 20;
-let activeConnections = 0;
 
 async function acquireConnection(): Promise<DuckDBConnection> {
   const db = await getInstance();
   if (!globalState.__glyte_pool) globalState.__glyte_pool = [];
   const conn = globalState.__glyte_pool.pop();
   if (conn) return conn;
-  if (activeConnections >= MAX_CONNECTIONS) {
+  if (globalState.__glyte_active_connections! >= MAX_CONNECTIONS) {
     throw new Error("Connection pool exhausted");
   }
-  activeConnections++;
+  globalState.__glyte_active_connections!++;
   return db.connect();
 }
 
@@ -62,10 +66,37 @@ function releaseConnection(conn: DuckDBConnection, discard = false): void {
   if (!discard && pool && pool.length < POOL_SIZE) {
     pool.push(conn);
   } else {
-    activeConnections = Math.max(0, activeConnections - 1);
+    globalState.__glyte_active_connections = Math.max(0, globalState.__glyte_active_connections! - 1);
     try { conn.closeSync(); } catch { /* already closed */ }
   }
 }
+
+// Serialize write operations to prevent concurrent DDL/DML conflicts
+class AsyncMutex {
+  private queue: (() => void)[] = [];
+  private locked = false;
+
+  async acquire(): Promise<void> {
+    if (!this.locked) {
+      this.locked = true;
+      return;
+    }
+    return new Promise<void>((resolve) => {
+      this.queue.push(resolve);
+    });
+  }
+
+  release(): void {
+    const next = this.queue.shift();
+    if (next) {
+      next();
+    } else {
+      this.locked = false;
+    }
+  }
+}
+
+const writeMutex = new AsyncMutex();
 
 // Check if table exists in persistent DB
 async function tableExists(tableName: string): Promise<boolean> {
@@ -136,56 +167,66 @@ export async function ingestCsv(
   csvPath: string,
   tableName: string
 ): Promise<{ rows: number; columns: string[] }> {
-  const conn = await acquireConnection();
-  let bad = false;
+  await writeMutex.acquire();
   try {
-    const safeTable = quoteIdent(tableName);
-    const safePath = safeCsvPath(csvPath);
-    await conn.run(`DROP TABLE IF EXISTS ${safeTable}`);
-    await conn.run(
-      `CREATE TABLE ${safeTable} AS SELECT * FROM read_csv_auto(${quoteLiteral(safePath)})`
-    );
-    const countResult = await conn.run(
-      `SELECT COUNT(*) as cnt FROM ${safeTable}`
-    );
-    const countRows = await countResult.getRows();
-    const count = Number(countRows[0][0]);
-
-    const colResult = await conn.run(
-      `SELECT column_name FROM information_schema.columns WHERE table_name = ${quoteLiteral(tableName)} ORDER BY ordinal_position`
-    );
-    const colRows = await colResult.getRows();
-    const columns = colRows.map((r) => String(r[0]));
-
-    // Track version in _glyte_versions
+    const conn = await acquireConnection();
+    let bad = false;
     try {
+      const safeTable = quoteIdent(tableName);
+      const safePath = safeCsvPath(csvPath);
+      await conn.run(`DROP TABLE IF EXISTS ${safeTable}`);
       await conn.run(
-        `INSERT INTO _glyte_versions (table_name, version, row_count, column_count, csv_path)
-         VALUES (${quoteLiteral(tableName)}, 1, ${count}, ${columns.length}, ${quoteLiteral(safePath)})`
+        `CREATE TABLE ${safeTable} AS SELECT * FROM read_csv_auto(${quoteLiteral(safePath)})`
       );
-    } catch {
-      // _glyte_versions may not exist yet during first boot
-    }
+      const countResult = await conn.run(
+        `SELECT COUNT(*) as cnt FROM ${safeTable}`
+      );
+      const countRows = await countResult.getRows();
+      const count = Number(countRows[0][0]);
 
-    return { rows: count, columns };
-  } catch (e) {
-    bad = true;
-    throw e;
+      const colResult = await conn.run(
+        `SELECT column_name FROM information_schema.columns WHERE table_name = ${quoteLiteral(tableName)} ORDER BY ordinal_position`
+      );
+      const colRows = await colResult.getRows();
+      const columns = colRows.map((r) => String(r[0]));
+
+      // Track version in _glyte_versions
+      try {
+        await conn.run(
+          `INSERT INTO _glyte_versions (table_name, version, row_count, column_count, csv_path)
+           VALUES (${quoteLiteral(tableName)}, 1, ${count}, ${columns.length}, ${quoteLiteral(safePath)})`
+        );
+      } catch {
+        // _glyte_versions may not exist yet during first boot
+      }
+
+      return { rows: count, columns };
+    } catch (e) {
+      bad = true;
+      throw e;
+    } finally {
+      releaseConnection(conn, bad);
+    }
   } finally {
-    releaseConnection(conn, bad);
+    writeMutex.release();
   }
 }
 
 export async function dropTable(tableName: string): Promise<void> {
-  const conn = await acquireConnection();
-  let bad = false;
+  await writeMutex.acquire();
   try {
-    await conn.run(`DROP TABLE IF EXISTS ${quoteIdent(tableName)}`);
-  } catch (e) {
-    bad = true;
-    throw e;
+    const conn = await acquireConnection();
+    let bad = false;
+    try {
+      await conn.run(`DROP TABLE IF EXISTS ${quoteIdent(tableName)}`);
+    } catch (e) {
+      bad = true;
+      throw e;
+    } finally {
+      releaseConnection(conn, bad);
+    }
   } finally {
-    releaseConnection(conn, bad);
+    writeMutex.release();
   }
 }
 
@@ -270,61 +311,66 @@ export async function appendCsv(
   sourceTable: string,
   sourceLabel: string
 ): Promise<{ newRows: number; totalRows: number }> {
-  const conn = await acquireConnection();
-  let bad = false;
+  await writeMutex.acquire();
   try {
-    const safeTarget = quoteIdent(targetTable);
+    const conn = await acquireConnection();
+    let bad = false;
+    try {
+      const safeTarget = quoteIdent(targetTable);
 
-    // Ensure _source column exists on target
-    const cols = await query<{ column_name: string }>(
-      `SELECT column_name FROM information_schema.columns WHERE table_schema = 'main' AND table_name = ${quoteLiteral(targetTable)} AND column_name = '_source'`
-    );
-    if (cols.length === 0) {
-      await conn.run(`ALTER TABLE ${safeTarget} ADD COLUMN "_source" VARCHAR`);
-    }
-
-    // Add any source columns missing in target (truly unmapped only)
-    const compat = await schemaCompatibility(sourceTable, targetTable);
-    for (const col of compat.missingInTarget) {
-      if (col === "_source") continue;
-      await conn.run(`ALTER TABLE ${safeTarget} ADD COLUMN ${quoteIdent(col)} VARCHAR`);
-    }
-
-    // Count source rows before insert
-    const countBefore = await conn.run(`SELECT COUNT(*) as cnt FROM ${quoteIdent(sourceTable)}`);
-    const newRows = Number((await countBefore.getRows())[0][0]);
-
-    // Build SELECT with column mapping aliases
-    const mapping = compat.columnMapping ?? {};
-    const srcColsResult = await query<{ column_name: string }>(
-      `SELECT column_name FROM information_schema.columns WHERE table_schema = 'main' AND table_name = ${quoteLiteral(sourceTable)} ORDER BY ordinal_position`
-    );
-    const srcColNames = srcColsResult.map((r) => r.column_name);
-
-    const selectParts: string[] = [];
-    for (const col of srcColNames) {
-      if (mapping[col]) {
-        selectParts.push(`${quoteIdent(col)} AS ${quoteIdent(mapping[col])}`);
-      } else {
-        selectParts.push(quoteIdent(col));
+      // Ensure _source column exists on target
+      const cols = await query<{ column_name: string }>(
+        `SELECT column_name FROM information_schema.columns WHERE table_schema = 'main' AND table_name = ${quoteLiteral(targetTable)} AND column_name = '_source'`
+      );
+      if (cols.length === 0) {
+        await conn.run(`ALTER TABLE ${safeTarget} ADD COLUMN "_source" VARCHAR`);
       }
+
+      // Add any source columns missing in target (truly unmapped only)
+      const compat = await schemaCompatibility(sourceTable, targetTable);
+      for (const col of compat.missingInTarget) {
+        if (col === "_source") continue;
+        await conn.run(`ALTER TABLE ${safeTarget} ADD COLUMN ${quoteIdent(col)} VARCHAR`);
+      }
+
+      // Count source rows before insert
+      const countBefore = await conn.run(`SELECT COUNT(*) as cnt FROM ${quoteIdent(sourceTable)}`);
+      const newRows = Number((await countBefore.getRows())[0][0]);
+
+      // Build SELECT with column mapping aliases
+      const mapping = compat.columnMapping ?? {};
+      const srcColsResult = await query<{ column_name: string }>(
+        `SELECT column_name FROM information_schema.columns WHERE table_schema = 'main' AND table_name = ${quoteLiteral(sourceTable)} ORDER BY ordinal_position`
+      );
+      const srcColNames = srcColsResult.map((r) => r.column_name);
+
+      const selectParts: string[] = [];
+      for (const col of srcColNames) {
+        if (mapping[col]) {
+          selectParts.push(`${quoteIdent(col)} AS ${quoteIdent(mapping[col])}`);
+        } else {
+          selectParts.push(quoteIdent(col));
+        }
+      }
+      selectParts.push(`${quoteLiteral(sourceLabel)} AS "_source"`);
+
+      await conn.run(
+        `INSERT INTO ${safeTarget} BY NAME (SELECT ${selectParts.join(", ")} FROM ${quoteIdent(sourceTable)})`
+      );
+
+      // Get total rows after insert
+      const countAfter = await conn.run(`SELECT COUNT(*) as cnt FROM ${safeTarget}`);
+      const totalRows = Number((await countAfter.getRows())[0][0]);
+
+      return { newRows, totalRows };
+    } catch (e) {
+      bad = true;
+      throw e;
+    } finally {
+      releaseConnection(conn, bad);
     }
-    selectParts.push(`${quoteLiteral(sourceLabel)} AS "_source"`);
-
-    await conn.run(
-      `INSERT INTO ${safeTarget} BY NAME (SELECT ${selectParts.join(", ")} FROM ${quoteIdent(sourceTable)})`
-    );
-
-    // Get total rows after insert
-    const countAfter = await conn.run(`SELECT COUNT(*) as cnt FROM ${safeTarget}`);
-    const totalRows = Number((await countAfter.getRows())[0][0]);
-
-    return { newRows, totalRows };
-  } catch (e) {
-    bad = true;
-    throw e;
   } finally {
-    releaseConnection(conn, bad);
+    writeMutex.release();
   }
 }
 
@@ -335,4 +381,23 @@ export async function backfillSource(
   await query(
     `UPDATE ${quoteIdent(tableName)} SET "_source" = ${quoteLiteral(label)} WHERE "_source" IS NULL`
   );
+}
+
+// Graceful shutdown — close all connections and DB instance
+async function shutdown() {
+  const pool = globalState.__glyte_pool || [];
+  for (const conn of pool) {
+    try { conn.closeSync(); } catch { /* ignore */ }
+  }
+  globalState.__glyte_pool = [];
+  if (globalState.__glyte_db) {
+    try { globalState.__glyte_db.closeSync(); } catch { /* ignore */ }
+    globalState.__glyte_db = undefined;
+  }
+  globalState.__glyte_active_connections = 0;
+}
+
+if (typeof process !== "undefined") {
+  process.on("SIGTERM", shutdown);
+  process.on("SIGINT", shutdown);
 }

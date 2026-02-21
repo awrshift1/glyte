@@ -1,7 +1,8 @@
 import path from "path";
+import { DATA_DIR } from "./paths";
 
 const ALLOWED_DATA_DIRS = [
-  path.join(process.cwd(), "data"),
+  DATA_DIR,
   "/tmp",
 ];
 
