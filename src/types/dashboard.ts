@@ -43,6 +43,8 @@ export interface DashboardConfig {
   classificationVersion?: string;
   appendedSources?: AppendedSource[];
   hiddenChartIds?: string[];
+  insights?: Insight[];
+  insightsHash?: string;
 }
 
 export interface TableEntry {
@@ -123,4 +125,17 @@ export interface ClassificationProgress {
     rejected: number;
     byTier: Record<string, number>;
   };
+}
+
+export type InsightType = "trend" | "anomaly" | "distribution" | "correlation";
+
+export interface Insight {
+  id: string;
+  title: string;
+  description: string;
+  type: InsightType;
+  confidence: number;
+  suggestedQuestion: string;
+  sql?: string;
+  narrativeGenerated?: boolean;
 }

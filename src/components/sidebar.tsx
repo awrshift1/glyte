@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { BarChart3, Home, Database, Settings } from "lucide-react";
 
 const navItems = [
-  { key: "home", label: "Home", icon: Home, href: "/" },
+  { key: "home", label: "Home", icon: Home, href: "/home" },
   { key: "dashboards", label: "Dashboards", icon: BarChart3, href: "/dashboards" },
   { key: "data", label: "Data Sources", icon: Database, href: "/data" },
   { key: "settings", label: "Settings", icon: Settings, href: "/settings" },

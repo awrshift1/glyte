@@ -168,6 +168,19 @@ export function AiSidebar({ dashboardId, starterQuestions }: AiSidebarProps) {
     [loading, messages, dashboardId, mode]
   );
 
+  // Listen for "Ask AI" from ProactiveInsights cards
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const question = (e as CustomEvent<{ question: string }>).detail.question;
+      if (question) {
+        if (!open) toggle();
+        sendMessage(question);
+      }
+    };
+    window.addEventListener("glyte:ask-ai", handler);
+    return () => window.removeEventListener("glyte:ask-ai", handler);
+  }, [open, toggle, sendMessage]);
+
   const modeLabel = mode === "analyst" ? "AI Analyst" : mode === "guide" ? "AI Guide" : "Glyte AI";
 
   if (!open) {

@@ -15,6 +15,7 @@ import { TableManager } from "@/components/table-manager";
 import type { SuggestionWithId } from "@/components/table-added-modal";
 import { ExistingTablePicker } from "@/components/existing-table-picker";
 import { ChartGrid } from "@/components/chart-grid";
+import { ProactiveInsights } from "@/components/proactive-insights";
 import { DimensionPills } from "@/components/dimension-pills";
 import { DimensionChart } from "@/components/dimension-chart";
 import { generateStarterQuestions } from "@/lib/semantic-layer";
@@ -63,6 +64,10 @@ function DashboardContent() {
     () => data?.config.profile ? generateStarterQuestions(data.config.profile) : undefined,
     [data?.config.profile]
   );
+
+  const handleAskAi = useCallback((question: string) => {
+    window.dispatchEvent(new CustomEvent("glyte:ask-ai", { detail: { question } }));
+  }, []);
 
   // Date range from URL
   const temporalCol = data?.config.profile?.columns.find((c) => c.type === "temporal");
@@ -420,6 +425,13 @@ function DashboardContent() {
             ))}
           </div>
         )}
+
+        {/* Proactive Insights */}
+        <ProactiveInsights
+          dashboardId={id}
+          cachedInsights={config.insights}
+          onAskAi={handleAskAi}
+        />
 
         {/* Dimension Explorer */}
         {config.profile && (
