@@ -29,7 +29,8 @@ async function getInstance(): Promise<DuckDBInstance> {
   const conn = await instance.connect();
   try {
     await conn.run("PRAGMA wal_autocheckpoint='256KB'");
-    await conn.run("SET enable_external_access = false");
+    // Note: enable_external_access left ON because ingestCsv uses read_csv_auto().
+    // User SQL is protected by BLOCKED_FUNCTIONS regex in query/route.ts instead.
   } finally {
     conn.closeSync();
   }
