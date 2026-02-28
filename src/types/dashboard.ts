@@ -43,6 +43,7 @@ export interface DashboardConfig {
   classificationVersion?: string;
   appendedSources?: AppendedSource[];
   hiddenChartIds?: string[];
+  chartTypeOverrides?: Record<string, ChartType>;
   insights?: Insight[];
   insightsHash?: string;
 }

@@ -4,23 +4,30 @@ import { useState, useCallback, useEffect, memo } from "react";
 import { AutoChart } from "@/components/auto-chart";
 import { ChartErrorBoundary } from "@/components/chart-error-boundary";
 import { X, ChevronDown, ChevronRight } from "lucide-react";
-import type { ChartData } from "@/types/dashboard";
+import { ChartTypeSwitcher } from "@/components/chart-type-switcher";
+import type { ChartData, ChartType } from "@/types/dashboard";
 
 interface ChartGridProps {
   dashboardId: string;
   charts: ChartData[];
   initialHiddenIds?: string[];
+  initialTypeOverrides?: Record<string, ChartType>;
 }
 
 export const ChartGrid = memo(function ChartGrid({
   dashboardId,
   charts,
   initialHiddenIds,
+  initialTypeOverrides,
 }: ChartGridProps) {
   const [hiddenChartIds, setHiddenChartIds] = useState<Set<string>>(
     new Set(initialHiddenIds ?? []),
   );
   const [showMoreInsights, setShowMoreInsights] = useState(false);
+
+  const [typeOverrides, setTypeOverrides] = useState<Record<string, ChartType>>(
+    initialTypeOverrides ?? {},
+  );
 
   // Sync from parent config (initial load)
   useEffect(() => {
@@ -28,6 +35,27 @@ export const ChartGrid = memo(function ChartGrid({
       setHiddenChartIds(new Set(initialHiddenIds));
     }
   }, [initialHiddenIds]);
+
+  useEffect(() => {
+    if (initialTypeOverrides) {
+      setTypeOverrides(initialTypeOverrides);
+    }
+  }, [initialTypeOverrides]);
+
+  const handleTypeChange = useCallback(
+    (chartId: string, newType: ChartType) => {
+      setTypeOverrides((prev) => {
+        const next = { ...prev, [chartId]: newType };
+        fetch(`/api/dashboard/${dashboardId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ chartTypeOverrides: next }),
+        }).catch((e) => console.error("Failed to persist chartTypeOverrides:", e));
+        return next;
+      });
+    },
+    [dashboardId],
+  );
 
   const handleHideChart = useCallback(
     (chartId: string) => {
@@ -56,6 +84,7 @@ export const ChartGrid = memo(function ChartGrid({
 
   const visibleCharts = charts
     .filter((c) => !hiddenChartIds.has(c.id))
+    .map((c) => (typeOverrides[c.id] ? { ...c, type: typeOverrides[c.id] } : c))
     .sort((a, b) => (b.confidence ?? 0.7) - (a.confidence ?? 0.7));
   const primaryCharts = visibleCharts.slice(0, 8);
   const overflowCharts = visibleCharts.slice(8);
@@ -82,6 +111,7 @@ export const ChartGrid = memo(function ChartGrid({
             key={chart.id}
             chart={chart}
             onHide={handleHideChart}
+            onTypeChange={handleTypeChange}
           />
         ))}
       </div>
@@ -105,6 +135,7 @@ export const ChartGrid = memo(function ChartGrid({
                   key={chart.id}
                   chart={chart}
                   onHide={handleHideChart}
+                  onTypeChange={handleTypeChange}
                 />
               ))}
             </div>
@@ -118,22 +149,31 @@ export const ChartGrid = memo(function ChartGrid({
 const ChartCard = memo(function ChartCard({
   chart,
   onHide,
+  onTypeChange,
 }: {
   chart: ChartData;
   onHide: (id: string) => void;
+  onTypeChange: (chartId: string, newType: ChartType) => void;
 }) {
   return (
     <div
       className="relative group bg-[#1e293b] border border-[#334155] rounded-lg p-5 overflow-hidden"
       style={{ gridColumn: `span ${chart.width} / span ${chart.width}` }}
     >
-      <button
-        onClick={() => onHide(chart.id)}
-        className="absolute top-2 right-2 z-10 p-1 rounded-md bg-[#0f1729]/80 border border-[#334155] text-[#94a3b8] hover:text-white hover:border-[#ef4444]/50 hover:bg-[#ef4444]/10 opacity-0 group-hover:opacity-100 transition-all"
-        title="Hide chart"
-      >
-        <X className="h-3.5 w-3.5" />
-      </button>
+      <div className="absolute top-2 right-2 z-10 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
+        <ChartTypeSwitcher
+          chart={chart}
+          currentType={chart.type}
+          onTypeChange={(newType) => onTypeChange(chart.id, newType)}
+        />
+        <button
+          onClick={() => onHide(chart.id)}
+          className="p-1 rounded-md bg-[#0f1729]/80 border border-[#334155] text-[#94a3b8] hover:text-white hover:border-[#ef4444]/50 hover:bg-[#ef4444]/10 transition-all"
+          title="Hide chart"
+        >
+          <X className="h-3.5 w-3.5" />
+        </button>
+      </div>
       <div className="mb-4">
         <h3 className="text-sm font-medium text-gray-300">{chart.title}</h3>
         {chart.reason && (

@@ -5,7 +5,8 @@ import { readFile, writeFile, unlink } from "fs/promises";
 import path from "path";
 import { DASHBOARDS_DIR } from "@/lib/paths";
 import { safeErrorMessage } from "@/lib/sql-utils";
-import type { ChartData, KpiData, DashboardConfig } from "@/types/dashboard";
+import { recommendCharts } from "@/lib/chart-recommender";
+import type { ChartData, ChartType, KpiData, DashboardConfig } from "@/types/dashboard";
 
 export async function GET(
   request: NextRequest,
@@ -22,10 +23,16 @@ export async function GET(
     const dateRange = dateCol ? { col: dateCol, from: dateFrom, to: dateTo } : undefined;
     const { clause: whereClause } = buildSafeWhereClause(filterParams, config, dateRange);
 
+    // If colorBy active, regenerate charts from profile with colorBy lens
+    const colorBy = request.nextUrl.searchParams.get("colorBy") ?? undefined;
+    const chartsToExecute = colorBy && config.profile
+      ? recommendCharts(config.profile, { colorBy })
+      : config.charts;
+
     const chartResults: (ChartData | KpiData)[] = [];
 
     // Task #14: parallel chart queries
-    const chartPromises = config.charts.map(async (chart) => {
+    const chartPromises = chartsToExecute.map(async (chart) => {
       try {
         const filteredQuery = injectWhere(chart.query, whereClause);
         const data = await query(filteredQuery);
@@ -42,7 +49,7 @@ export async function GET(
         } else {
           return {
             id: chart.id,
-            type: chart.type,
+            type: (config.chartTypeOverrides?.[chart.id] ?? chart.type) as ChartType,
             title: chart.title,
             width: chart.width,
             xColumn: chart.xColumn,
@@ -107,6 +114,7 @@ const ALLOWED_PATCH_KEYS = new Set<keyof DashboardConfig>([
   "excludedColumns",
   "title",
   "hiddenChartIds",
+  "chartTypeOverrides",
 ]);
 
 export async function PATCH(

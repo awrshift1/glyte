@@ -15,6 +15,7 @@ import { TableManager } from "@/components/table-manager";
 import type { SuggestionWithId } from "@/components/table-added-modal";
 import { ExistingTablePicker } from "@/components/existing-table-picker";
 import { ChartGrid } from "@/components/chart-grid";
+import { ColorByPills } from "@/components/color-by-pills";
 import { ProactiveInsights } from "@/components/proactive-insights";
 import { DimensionPills } from "@/components/dimension-pills";
 import { DimensionChart } from "@/components/dimension-chart";
@@ -70,9 +71,23 @@ function DashboardContent() {
   }, []);
 
   // Date range from URL
-  const temporalCol = data?.config.profile?.columns.find((c) => c.type === "temporal");
+  const temporalCols = useMemo(
+    () => data?.config.profile?.columns.filter((c) => c.type === "temporal") ?? [],
+    [data?.config.profile?.columns]
+  );
+  const selectedDateCol = searchParams.get("dateCol") ?? temporalCols[0]?.name ?? "";
+  const temporalCol = temporalCols.find((c) => c.name === selectedDateCol) ?? temporalCols[0];
   const dateFrom = searchParams.get("dateFrom") ?? "";
   const dateTo = searchParams.get("dateTo") ?? "";
+
+  const setDateCol = useCallback(
+    (colName: string) => {
+      const p = new URLSearchParams(searchParams.toString());
+      p.set("dateCol", colName);
+      router.replace(`${pathname}?${p.toString()}`, { scroll: false });
+    },
+    [searchParams, router, pathname]
+  );
 
   const setDateParam = useCallback(
     (key: string, value: string) => {
@@ -398,6 +413,19 @@ function DashboardContent() {
           {temporalCol && (
             <div className="flex items-center gap-2">
               <Calendar className="h-3.5 w-3.5 text-[#94a3b8]" />
+              {temporalCols.length > 1 && (
+                <select
+                  value={selectedDateCol}
+                  onChange={(e) => setDateCol(e.target.value)}
+                  className="bg-[#1e293b] border border-[#334155] rounded-lg px-2 py-1 text-xs text-[#cbd5e1] [color-scheme:dark]"
+                >
+                  {temporalCols.map((c) => (
+                    <option key={c.name} value={c.name}>
+                      {c.name.replace(/_/g, " ")}
+                    </option>
+                  ))}
+                </select>
+              )}
               <input
                 type="date"
                 value={dateFrom}
@@ -416,6 +444,10 @@ function DashboardContent() {
         </header>
 
         <FilterBar />
+
+        {config.profile && (
+          <ColorByPills columns={config.profile.columns} />
+        )}
 
         {/* KPI Row */}
         {kpis.length > 0 && (
@@ -451,6 +483,7 @@ function DashboardContent() {
           dashboardId={id}
           charts={visualCharts}
           initialHiddenIds={config.hiddenChartIds}
+          initialTypeOverrides={config.chartTypeOverrides}
         />
       </main>
 
