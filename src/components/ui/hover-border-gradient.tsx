@@ -26,9 +26,9 @@ const HoverBorderGradient = React.forwardRef(
       children,
       ...props
     }: HoverBorderGradientProps<T>,
-    ref: React.Ref<Element>
+    ref: React.Ref<HTMLElement>
   ) => {
-    const Component = as || "button";
+    const Component = (as || "button") as React.ElementType;
     const innerRef = React.useRef<HTMLSpanElement>(null);
     const frameRef = React.useRef<number | null>(null);
 
@@ -61,11 +61,11 @@ const HoverBorderGradient = React.forwardRef(
           "group relative inline-flex items-center justify-center overflow-hidden rounded-lg p-[1px]",
           containerClassName
         )}
-        onMouseMove={(event) => {
+        onMouseMove={(event: React.MouseEvent) => {
           onMouseMove?.(event);
           handleMove(event);
         }}
-        onMouseLeave={(event) => {
+        onMouseLeave={(event: React.MouseEvent) => {
           onMouseLeave?.(event);
           handleLeave();
         }}

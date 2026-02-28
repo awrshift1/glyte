@@ -12,9 +12,9 @@ type ShimmerButtonProps<T extends React.ElementType> = {
 const ShimmerButton = React.forwardRef(
   <T extends React.ElementType = "button">(
     { as, className, containerClassName, children, ...props }: ShimmerButtonProps<T>,
-    ref: React.Ref<Element>
+    ref: React.Ref<HTMLElement>
   ) => {
-    const Component = as || "button";
+    const Component = (as || "button") as React.ElementType;
 
     return (
       <Component

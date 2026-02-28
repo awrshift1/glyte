@@ -6,6 +6,10 @@ import type { IcpTier } from "@/lib/icp-classifier";
 const BATCH_SIZE = 500;
 
 export async function POST(request: Request) {
+  if (process.env.ENABLE_KEA_FEATURES !== "true") {
+    return Response.json({ error: "Not found" }, { status: 404 });
+  }
+
   const { tableName, titleColumn, companyColumn, version = "v1.0" } =
     await request.json();
 

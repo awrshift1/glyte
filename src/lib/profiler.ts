@@ -13,6 +13,7 @@ export interface ColumnProfile {
   max?: number | string;
   mean?: number;
   sampleValues: string[];
+  multiValueDelimiter?: string;
 }
 
 export interface TableProfile {
